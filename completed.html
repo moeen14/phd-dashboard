@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Completed Log — PhD Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Auth overlay ── -->
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">PhD Dashboard</div>
+    <p class="auth-subtitle">Sign in to view your completed tasks log.</p>
+    <button id="signInBtn" class="google-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p class="auth-note">Your data is private — only you can access it</p>
+  </div>
+</div>
+
+<!-- ── Loading overlay ── -->
+<div id="loadingScreen" class="auth-overlay hidden">
+  <div class="auth-card">
+    <div class="loading-spinner"></div>
+    <p style="color:var(--text-muted);font-size:14px">Loading your completed log...</p>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
+<div id="app" class="hidden">
+
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">PhD Dashboard</span>
+    <span class="header-date" id="headerDate"></span>
+    <span class="sync-status" id="syncStatus"></span>
+  </div>
+  <nav class="header-nav">
+    <div class="user-info">
+      <img class="user-avatar" id="userAvatar" src="" alt="" />
+      <span class="user-name" id="userName"></span>
+    </div>
+    <a href="index.html" class="nav-btn">Dashboard</a>
+    <a href="completed.html" class="nav-btn active">Completed Log</a>
+    <button class="nav-btn danger-btn" id="clearAllBtn">Clear All</button>
+    <button class="nav-btn danger-btn" onclick="signOutUser()">Sign out</button>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="completed-stats" id="statsRow"></div>
+  <div class="completed-filters" id="filterBar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="research">Research</button>
+    <button class="filter-btn" data-filter="coursework">Coursework</button>
+    <button class="filter-btn" data-filter="admin">Admin</button>
+    <button class="filter-btn" data-filter="personal">Personal</button>
+    <button class="filter-btn" data-filter="weekly-goal">Weekly Goals</button>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><span class="icon">✅</span> Completed Tasks <span class="card-count" id="completedCount"></span></span>
+    </div>
+    <div id="completedList"></div>
+  </div>
+</main>
+
+</div><!-- #app -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+firebase.initializeApp(FIREBASE_CONFIG);
+
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (user) {
+    document.getElementById('authOverlay').classList.add('hidden');
+    document.getElementById('loadingScreen').classList.remove('hidden');
+    await loadFromCloud(user.uid);
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    if (user.photoURL) document.getElementById('userAvatar').src = user.photoURL;
+    document.getElementById('userName').textContent = user.displayName || user.email;
+    init();
+  } else {
+    document.getElementById('authOverlay').classList.remove('hidden');
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+
+document.getElementById('signInBtn').onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(err => alert('Sign-in failed: ' + err.message));
+};
+
+let activeFilter = 'all';
+
+function init() {
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  document.getElementById('clearAllBtn').onclick = () => {
+    if (confirm('Clear all completed tasks? This cannot be undone.')) { clearAllCompleted(); render(); }
+  };
+  document.getElementById('filterBar').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    activeFilter = btn.dataset.filter;
+    document.querySelectorAll('#filterBar .filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+  render();
+}
+
+function render() {
+  const data = getData();
+  const all = data.completedTasks;
+
+  // Stats
+  const catLabels = { research:'Research', coursework:'Coursework', admin:'Admin', personal:'Personal', 'weekly-goal':'Weekly Goals' };
+  let statsHtml = `<div class="stat-card"><div class="stat-number">${all.length}</div><div class="stat-label">Total Done</div></div>`;
+  Object.entries(catLabels).forEach(([cat, label]) => {
+    const count = all.filter(t => t.category === cat).length;
+    if (count > 0) statsHtml += `<div class="stat-card"><div class="stat-number">${count}</div><div class="stat-label">${label}</div></div>`;
+  });
+  document.getElementById('statsRow').innerHTML = statsHtml;
+
+  let tasks = activeFilter === 'all' ? all : all.filter(t => t.category === activeFilter);
+  document.getElementById('completedCount').textContent = tasks.length;
+
+  const list = document.getElementById('completedList');
+  if (!tasks.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>${activeFilter === 'all' ? 'Nothing completed yet — check off tasks from the dashboard!' : 'No completed tasks in this category.'}</p></div>`;
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  tasks.forEach(t => {
+    const dateKey = t.completedAt
+      ? new Date(t.completedAt).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' })
+      : 'Unknown date';
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(t);
+  });
+
+  list.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <div style="padding:10px 20px 4px;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--surface2)">${date}</div>
+    ${items.map(t => `
+      <div class="completed-item">
+        <div class="completed-check-icon">✓</div>
+        <div class="completed-body">
+          <div class="completed-text">${esc(t.text)}</div>
+          <div class="completed-meta">
+            <span class="tag tag-${t.category}" style="font-size:10px">${t.category}</span>
+            &nbsp;·&nbsp; Completed ${formatDateTime(t.completedAt)}
+            ${t.deadline ? `&nbsp;·&nbsp; Deadline was ${formatDate(t.deadline)}` : ''}
+          </div>
+        </div>
+        <div class="completed-actions">
+          <button class="icon-btn" onclick="handleRestore('${t.id}')" title="Restore to active tasks" style="font-size:14px">↩</button>
+        </div>
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function handleRestore(id) { restoreTask(id); render(); }
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

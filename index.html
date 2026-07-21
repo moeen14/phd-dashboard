@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhD Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Auth overlay ──────────────────────────────────────────────────────── -->
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">PhD Dashboard</div>
+    <p class="auth-subtitle">Your personal research command center.<br>Sign in to sync across all your devices.</p>
+    <button id="signInBtn" class="google-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p class="auth-note">Your data is private — only you can access it</p>
+  </div>
+</div>
+
+<!-- ── Loading overlay ───────────────────────────────────────────────────── -->
+<div id="loadingScreen" class="auth-overlay hidden">
+  <div class="auth-card">
+    <div class="loading-spinner"></div>
+    <p style="color:var(--text-muted);font-size:14px">Loading your dashboard...</p>
+  </div>
+</div>
+
+<!-- ── Main app ───────────────────────────────────────────────────────────── -->
+<div id="app" class="hidden">
+
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">PhD Dashboard</span>
+    <span class="header-date" id="headerDate"></span>
+    <span class="sync-status" id="syncStatus"></span>
+  </div>
+  <nav class="header-nav">
+    <div class="user-info">
+      <img class="user-avatar" id="userAvatar" src="" alt="" />
+      <span class="user-name" id="userName"></span>
+    </div>
+    <a href="index.html" class="nav-btn active">Dashboard</a>
+    <a href="completed.html" class="nav-btn" id="completedLink">
+      Completed Log
+      <span class="badge" id="completedBadge">0</span>
+    </a>
+    <button class="nav-btn danger-btn" onclick="signOutUser()">Sign out</button>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div class="col">
+
+      <!-- Daily Habits -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">☀️</span> Daily Habits <span class="card-count" id="habitsCount"></span></span>
+          <button class="icon-btn" id="addHabitBtn" title="Add habit">+</button>
+        </div>
+        <div class="card-body">
+          <div class="habit-progress">
+            <div class="habit-progress-bar" id="habitProgressBar" style="width:0%"></div>
+          </div>
+          <div class="habit-label" id="habitLabel">0 / 0 done today</div>
+          <div class="habit-list" id="habitList"></div>
+        </div>
+        <div class="add-form" id="habitAddForm">
+          <div class="add-form-row">
+            <input class="form-input flex1" id="habitInput" placeholder="New daily habit..." />
+          </div>
+          <div class="add-form-row">
+            <button class="btn btn-primary" onclick="submitHabit()">Add</button>
+            <button class="btn btn-ghost" onclick="closeForm('habitAddForm')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Tasks -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📋</span> Active Tasks <span class="card-count" id="taskCount"></span></span>
+          <button class="icon-btn" id="addTaskBtn" title="Add task">+</button>
+        </div>
+        <div class="task-filters" id="taskFilters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="research">Research</button>
+          <button class="filter-btn" data-filter="coursework">Coursework</button>
+          <button class="filter-btn" data-filter="admin">Admin</button>
+          <button class="filter-btn" data-filter="personal">Personal</button>
+        </div>
+        <div class="task-list" id="taskList"></div>
+        <div class="add-form" id="taskAddForm">
+          <div class="add-form-row">
+            <input class="form-input flex1" id="taskInput" placeholder="Task description..." />
+          </div>
+          <div class="add-form-row">
+            <select class="form-input small" id="taskCategory">
+              <option value="research">Research</option>
+              <option value="coursework">Coursework</option>
+              <option value="admin" selected>Admin</option>
+              <option value="personal">Personal</option>
+            </select>
+            <select class="form-input small" id="taskPriority">
+              <option value="high">High Priority</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <input type="date" class="form-input small" id="taskDeadline" />
+          </div>
+          <div class="add-form-row">
+            <button class="btn btn-primary" onclick="submitTask()">Add Task</button>
+            <button class="btn btn-ghost" onclick="closeForm('taskAddForm')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col">
+
+      <!-- Project Quicklinks -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">🔗</span> Projects</span>
+          <button class="icon-btn" id="addProjectBtn" title="Add project">+</button>
+        </div>
+        <div class="card-body">
+          <div class="project-grid" id="projectGrid"></div>
+        </div>
+        <div class="add-form" id="projectAddForm">
+          <div class="add-form-row">
+            <input class="form-input flex1" id="projectName" placeholder="Project name..." />
+          </div>
+          <div class="add-form-row">
+            <input class="form-input flex1" id="projectUrl" placeholder="URL (optional)" />
+          </div>
+          <div class="add-form-row">
+            <button class="btn btn-primary" onclick="submitProject()">Add</button>
+            <button class="btn btn-ghost" onclick="closeForm('projectAddForm')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deadlines -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">📅</span> Deadlines</span>
+          <button class="icon-btn" id="addDeadlineBtn" title="Add deadline">+</button>
+        </div>
+        <div class="card-body">
+          <div class="deadline-list" id="deadlineList"></div>
+        </div>
+        <div class="add-form" id="deadlineAddForm">
+          <div class="add-form-row">
+            <input class="form-input flex1" id="deadlineText" placeholder="Deadline label..." />
+            <input type="date" class="form-input small" id="deadlineDate" />
+          </div>
+          <div class="add-form-row">
+            <button class="btn btn-primary" onclick="submitDeadline()">Add</button>
+            <button class="btn btn-ghost" onclick="closeForm('deadlineAddForm')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Goals -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="icon">🎯</span> Weekly Goals</span>
+          <button class="icon-btn" id="addGoalBtn" title="Add goal">+</button>
+        </div>
+        <div class="card-body">
+          <div class="week-label" id="weekLabel"></div>
+          <div class="goal-list" id="goalList"></div>
+        </div>
+        <div class="add-form" id="goalAddForm">
+          <div class="add-form-row">
+            <input class="form-input flex1" id="goalInput" placeholder="This week's goal..." />
+          </div>
+          <div class="add-form-row">
+            <button class="btn btn-primary" onclick="submitGoal()">Add</button>
+            <button class="btn btn-ghost" onclick="closeForm('goalAddForm')">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+</div><!-- #app -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+// ── Firebase init & auth ──────────────────────────────────────────────────
+firebase.initializeApp(FIREBASE_CONFIG);
+
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (user) {
+    document.getElementById('authOverlay').classList.add('hidden');
+    document.getElementById('loadingScreen').classList.remove('hidden');
+
+    await loadFromCloud(user.uid);
+
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+
+    if (user.photoURL) document.getElementById('userAvatar').src = user.photoURL;
+    document.getElementById('userName').textContent = user.displayName || user.email;
+
+    init();
+  } else {
+    document.getElementById('authOverlay').classList.remove('hidden');
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+
+document.getElementById('signInBtn').onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(err => {
+    alert('Sign-in failed: ' + err.message);
+  });
+};
+
+// ── Dashboard logic ───────────────────────────────────────────────────────
+let activeFilter = 'all';
+
+function init() {
+  const data = getData();
+  maybeResetHabits(data);
+  maybeResetWeeklyGoals(data);
+
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+  document.getElementById('completedBadge').textContent = getData().completedTasks.length;
+
+  renderHabits();
+  renderTasks();
+  renderProjects();
+  renderDeadlines();
+  renderWeeklyGoals();
+
+  // Enter key support
+  ['habitInput','taskInput','projectName','deadlineText','goalInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (id === 'habitInput') submitHabit();
+        else if (id === 'taskInput') submitTask();
+        else if (id === 'projectName') submitProject();
+        else if (id === 'deadlineText') submitDeadline();
+        else if (id === 'goalInput') submitGoal();
+      }
+    });
+  });
+
+  document.getElementById('addHabitBtn').onclick = () => toggleForm('habitAddForm', 'habitInput');
+  document.getElementById('addTaskBtn').onclick = () => toggleForm('taskAddForm', 'taskInput');
+  document.getElementById('addProjectBtn').onclick = () => toggleForm('projectAddForm', 'projectName');
+  document.getElementById('addDeadlineBtn').onclick = () => toggleForm('deadlineAddForm', 'deadlineText');
+  document.getElementById('addGoalBtn').onclick = () => toggleForm('goalAddForm', 'goalInput');
+
+  document.getElementById('deadlineDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('taskDeadline').min = new Date().toISOString().split('T')[0];
+
+  document.getElementById('taskFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    activeFilter = btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderTasks();
+  });
+}
+
+function toggleForm(formId, focusId) {
+  const form = document.getElementById(formId);
+  const isOpen = form.classList.contains('open');
+  document.querySelectorAll('.add-form').forEach(f => f.classList.remove('open'));
+  if (!isOpen) {
+    form.classList.add('open');
+    setTimeout(() => { const el = document.getElementById(focusId); if (el) el.focus(); }, 50);
+  }
+}
+
+function closeForm(formId) {
+  document.getElementById(formId).classList.remove('open');
+}
+
+// ── Habits ────────────────────────────────────────────────────────────────
+function renderHabits() {
+  const { habits } = getData();
+  const done = habits.filter(h => h.checked).length;
+  const pct = habits.length ? Math.round((done / habits.length) * 100) : 0;
+  document.getElementById('habitsCount').textContent = `${done}/${habits.length}`;
+  document.getElementById('habitProgressBar').style.width = pct + '%';
+  document.getElementById('habitLabel').textContent = `${done} / ${habits.length} done today`;
+  document.getElementById('habitList').innerHTML = habits.map(h => `
+    <div class="habit-item ${h.checked ? 'done' : ''}" onclick="handleHabitToggle('${h.id}')">
+      <div class="habit-check">${h.checked ? '✓' : ''}</div>
+      <span class="habit-text">${esc(h.text)}</span>
+      <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
+    </div>
+  `).join('') || '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
+}
+
+function handleHabitToggle(id) { toggleHabit(id); renderHabits(); updateBadge(); }
+function handleHabitDelete(e, id) { e.stopPropagation(); deleteHabit(id); renderHabits(); }
+function submitHabit() {
+  const input = document.getElementById('habitInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addHabit(text); input.value = ''; renderHabits();
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────
+function renderTasks() {
+  const data = getData();
+  let tasks = activeFilter === 'all' ? data.tasks : data.tasks.filter(t => t.category === activeFilter);
+  tasks = tasks.slice().sort((a, b) => {
+    const p = { high: 0, medium: 1, low: 2 };
+    if (p[a.priority] !== p[b.priority]) return p[a.priority] - p[b.priority];
+    if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline);
+    if (a.deadline) return -1; if (b.deadline) return 1;
+    return 0;
+  });
+  document.getElementById('taskCount').textContent = data.tasks.length;
+  const list = document.getElementById('taskList');
+  if (tasks.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>${activeFilter === 'all' ? 'All clear! Add a task above.' : 'No tasks in this category.'}</p></div>`;
+    return;
+  }
+  list.innerHTML = tasks.map(t => {
+    const urgency = deadlineUrgency(t.deadline);
+    return `
+    <div class="task-item" id="task-${t.id}">
+      <div class="task-checkbox" onclick="handleTaskComplete('${t.id}')" title="Mark complete"></div>
+      <div class="task-body">
+        <div class="task-text">${esc(t.text)}</div>
+        <div class="task-meta">
+          <div class="priority-dot priority-${t.priority}" title="${t.priority} priority"></div>
+          <span class="tag tag-${t.category}">${t.category}</span>
+          ${t.deadline ? `<span class="deadline-tag deadline-${urgency}">${formatDate(t.deadline)} · ${deadlineDaysLabel(t.deadline)}</span>` : ''}
+        </div>
+      </div>
+      <button class="icon-btn danger" onclick="handleTaskDelete('${t.id}')" title="Delete">×</button>
+    </div>`;
+  }).join('');
+}
+
+function handleTaskComplete(id) {
+  const el = document.getElementById('task-' + id);
+  if (!el) return;
+  el.classList.add('completing');
+  setTimeout(() => { completeTask(id); renderTasks(); updateBadge(); }, 350);
+}
+function handleTaskDelete(id) { deleteTask(id); renderTasks(); }
+function submitTask() {
+  const text = document.getElementById('taskInput').value.trim();
+  if (!text) return;
+  addTask(text, document.getElementById('taskCategory').value, document.getElementById('taskPriority').value, document.getElementById('taskDeadline').value);
+  document.getElementById('taskInput').value = '';
+  document.getElementById('taskDeadline').value = '';
+  renderTasks();
+}
+
+// ── Projects ──────────────────────────────────────────────────────────────
+function renderProjects() {
+  const { projects } = getData();
+  document.getElementById('projectGrid').innerHTML = projects.map(p => `
+    <div class="project-card">
+      ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a>` : `<span class="project-no-link">${esc(p.name)}</span>`}
+      <button class="icon-btn danger" onclick="handleProjectDelete('${p.id}')" title="Remove">×</button>
+    </div>
+  `).join('') || '<div class="text-muted" style="font-size:13px">No projects yet.</div>';
+}
+function handleProjectDelete(id) { deleteProject(id); renderProjects(); }
+function submitProject() {
+  const name = document.getElementById('projectName').value.trim();
+  if (!name) return;
+  addProject(name, document.getElementById('projectUrl').value.trim());
+  document.getElementById('projectName').value = '';
+  document.getElementById('projectUrl').value = '';
+  closeForm('projectAddForm'); renderProjects();
+}
+
+// ── Deadlines ─────────────────────────────────────────────────────────────
+function renderDeadlines() {
+  const { deadlines } = getData();
+  const list = document.getElementById('deadlineList');
+  if (!deadlines.length) { list.innerHTML = '<div class="text-muted" style="font-size:13px">No deadlines added.</div>'; return; }
+  list.innerHTML = deadlines.map(d => {
+    const u = deadlineUrgency(d.date);
+    return `
+    <div class="deadline-item ${u}">
+      <div class="deadline-dot"></div>
+      <div class="deadline-info">
+        <div class="deadline-text">${esc(d.text)}</div>
+        <div class="deadline-date">${formatDate(d.date + 'T12:00:00')}</div>
+      </div>
+      <span class="deadline-days">${deadlineDaysLabel(d.date)}</span>
+      <button class="icon-btn danger" onclick="handleDeadlineDelete('${d.id}')" title="Remove">×</button>
+    </div>`;
+  }).join('');
+}
+function handleDeadlineDelete(id) { deleteDeadline(id); renderDeadlines(); }
+function submitDeadline() {
+  const text = document.getElementById('deadlineText').value.trim();
+  const date = document.getElementById('deadlineDate').value;
+  if (!text || !date) return;
+  addDeadline(text, date);
+  document.getElementById('deadlineText').value = '';
+  document.getElementById('deadlineDate').value = new Date().toISOString().split('T')[0];
+  closeForm('deadlineAddForm'); renderDeadlines();
+}
+
+// ── Weekly Goals ──────────────────────────────────────────────────────────
+function renderWeeklyGoals() {
+  const { weeklyGoals, weeklyGoalsWeek } = getData();
+  const d = new Date(weeklyGoalsWeek + 'T12:00:00');
+  const end = new Date(d); end.setDate(d.getDate() + 6);
+  document.getElementById('weekLabel').textContent =
+    `Week of ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+  const list = document.getElementById('goalList');
+  if (!weeklyGoals.length) { list.innerHTML = '<div class="text-muted" style="font-size:13px;padding:4px 0">Set goals for this week!</div>'; return; }
+  list.innerHTML = weeklyGoals.map(g => `
+    <div class="goal-item ${g.completed ? 'done' : ''}">
+      <div class="goal-check" onclick="handleGoalToggle('${g.id}')">${g.completed ? '✓' : ''}</div>
+      <span class="goal-text">${esc(g.text)}</span>
+      <button class="icon-btn danger" onclick="handleGoalDelete('${g.id}')" title="Remove">×</button>
+    </div>
+  `).join('');
+}
+function handleGoalToggle(id) { toggleWeeklyGoal(id); renderWeeklyGoals(); }
+function handleGoalDelete(id) { deleteWeeklyGoal(id); renderWeeklyGoals(); }
+function submitGoal() {
+  const text = document.getElementById('goalInput').value.trim();
+  if (!text) return;
+  addWeeklyGoal(text); document.getElementById('goalInput').value = ''; renderWeeklyGoals();
+}
+
+function updateBadge() {
+  document.getElementById('completedBadge').textContent = getData().completedTasks.length;
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
