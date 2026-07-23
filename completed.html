@@ -63,10 +63,7 @@
       <button class="period-tab" data-p="month">Month</button>
       <button class="period-tab" data-p="year">Year</button>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="nav-btn" id="demoBtn" style="font-size:12px;padding:5px 12px">Load demo data</button>
-      <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear completed</button>
-    </div>
+    <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear completed</button>
   </div>
 
   <!-- Row 2: smart period pill nav, centered -->
@@ -163,13 +160,6 @@ function init() {
 
   document.getElementById('navPrev').onclick = () => { offset--; render(); };
   document.getElementById('navNext').onclick = () => { offset++; render(); };
-
-  document.getElementById('demoBtn').onclick = () => {
-    if (confirm('Add 90 days of sample habit history and 20 completed tasks so you can preview the log?')) {
-      seedDemoHistory();
-      render();
-    }
-  };
 
   render();
 }
