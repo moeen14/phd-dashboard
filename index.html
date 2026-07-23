@@ -315,30 +315,31 @@ function renderHabits() {
   document.getElementById('habitProgressBar').style.width = pct + '%';
   document.getElementById('habitLabel').textContent    = `${done} / ${habits.length} done today`;
 
+  const checkColor = c => c || '#94a3b8';
   document.getElementById('habitList').innerHTML = habits.map(h => {
     const m   = h.metric ? HABIT_METRICS[h.metric] : null;
     const val = h.checked && m ? habitValueOnDate(h, todayStr()) : null;
+    const col = checkColor(h.color);
     return `
     <div class="habit-item ${h.checked ? 'done' : ''}">
-      <div class="habit-item-main">
-        <div class="habit-check-area" onclick="handleHabitToggle('${h.id}')">
-          <div class="habit-check" style="border-color:${h.color};${h.checked ? `background:${h.color}` : ''}">${h.checked ? '✓' : ''}</div>
-          <span class="habit-color-dot" style="background:${h.color}"></span>
-          <span class="habit-text">${esc(h.text)}</span>
-        </div>
-        <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
+      <div class="habit-check"
+           style="${h.checked ? `background:${col};border-color:${col}` : `border-color:${col}`}"
+           onclick="handleHabitToggle('${h.id}')">${h.checked ? '✓' : ''}</div>
+      <span class="habit-color-dot" style="background:${col};margin-top:4px;flex-shrink:0"></span>
+      <div class="habit-body" onclick="handleHabitToggle('${h.id}')">
+        <div class="habit-text">${esc(h.text)}</div>
+        ${h.checked && m ? `
+        <div class="habit-metric-row" onclick="event.stopPropagation()">
+          <span class="metric-icon">${m.icon}</span>
+          <input class="metric-input" type="number" min="0" step="${m.step}"
+                 placeholder="${m.placeholder}"
+                 value="${val !== null ? val : ''}"
+                 onchange="handleMetricChange('${h.id}', this.value)"
+                 onkeydown="if(event.key==='Enter')this.blur()" />
+          <span class="metric-unit">${m.unit} today</span>
+        </div>` : ''}
       </div>
-      ${h.checked && m ? `
-      <div class="habit-metric-row">
-        <span class="metric-icon">${m.icon}</span>
-        <input class="metric-input" type="number" min="0" step="${m.step}"
-               placeholder="${m.placeholder}"
-               value="${val !== null ? val : ''}"
-               onchange="handleMetricChange('${h.id}', this.value)"
-               onkeydown="if(event.key==='Enter') this.blur()"
-               onclick="event.stopPropagation()" />
-        <span class="metric-unit">${m.unit} today</span>
-      </div>` : ''}
+      <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
     </div>`;
   }).join('') || '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
 }

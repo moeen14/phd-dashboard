@@ -193,11 +193,94 @@ async function loadFromCloud(uid) {
       .collection('data').doc('main')
       .get();
     if (doc.exists) {
-      localStorage.setItem(DB_KEY, JSON.stringify(migrateData(doc.data())));
+      const migrated = migrateData(doc.data());
+      localStorage.setItem(DB_KEY, JSON.stringify(migrated));
+      // Always write back so migrations (colors, renamed habits) persist
+      await firebase.firestore()
+        .collection('users').doc(uid)
+        .collection('data').doc('main')
+        .set(migrated);
     } else {
       await _syncNow();
     }
   } catch(e) { console.error('Load failed:', e); }
+}
+
+// ── Demo data seed (fills past 90 days for testing) ───────────────────────
+function seedDemoHistory() {
+  const data = getData();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // 90 days of habit history with realistic patterns
+  for (let i = 1; i <= 90; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = dateStr(d);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+    data.habits.forEach(h => {
+      if (h.history[ds]) return; // don't overwrite real data
+      const rand = Math.random();
+      const doIt = isWeekend ? rand > 0.4 : rand > 0.18;
+      if (!doIt) return;
+      if (h.metric === 'hours') {
+        const v = isWeekend ? +(Math.random()*3+1).toFixed(1) : +(Math.random()*5+4).toFixed(1);
+        h.history[ds] = { done: true, value: v };
+      } else if (h.metric === 'papers') {
+        const v = rand > 0.55 ? 1 : rand > 0.25 ? 2 : 0;
+        h.history[ds] = { done: true, value: v || null };
+      } else if (h.metric === 'words') {
+        const v = Math.floor(Math.random()*1600 + 200);
+        h.history[ds] = { done: true, value: v };
+      } else {
+        h.history[ds] = true;
+      }
+    });
+  }
+
+  // Completed tasks spread over the past 90 days
+  const demos = [
+    { text:'Literature review: soft robot locomotion', category:'research', priority:'high', daysAgo:3 },
+    { text:'Update AMGCP circuit diagrams', category:'research', priority:'medium', daysAgo:7 },
+    { text:'Weekly lab meeting notes', category:'admin', priority:'low', daysAgo:8 },
+    { text:'Submit ASABE registration form', category:'admin', priority:'high', daysAgo:12 },
+    { text:'Read: Zhang et al. 2024 (navigation CI)', category:'research', priority:'medium', daysAgo:14 },
+    { text:'AMGCP sensor calibration write-up', category:'research', priority:'medium', daysAgo:18 },
+    { text:'Email Dr. Chen about poster format', category:'admin', priority:'medium', daysAgo:21 },
+    { text:'Chapter 2 draft — intro section', category:'research', priority:'high', daysAgo:25 },
+    { text:'Coursework: controls problem set 4', category:'coursework', priority:'high', daysAgo:29 },
+    { text:'Review AIMS paper reviewer comments', category:'research', priority:'high', daysAgo:33 },
+    { text:'Lab equipment inventory check', category:'admin', priority:'low', daysAgo:38 },
+    { text:'Read: Doe et al. 2023 (sim-to-real gap)', category:'research', priority:'medium', daysAgo:42 },
+    { text:'AMGCP status update slides for Dr. T', category:'research', priority:'medium', daysAgo:47 },
+    { text:'Finish coursework midterm project', category:'coursework', priority:'high', daysAgo:53 },
+    { text:'Write abstract for ASABE 2026', category:'research', priority:'high', daysAgo:58 },
+    { text:'Order replacement sensors (AMGCP)', category:'admin', priority:'medium', daysAgo:63 },
+    { text:'Read: Peng et al. 2022 (RL locomotion)', category:'research', priority:'medium', daysAgo:68 },
+    { text:'Coursework: final report submission', category:'coursework', priority:'high', daysAgo:74 },
+    { text:'Soft robot CAD model update', category:'research', priority:'medium', daysAgo:79 },
+    { text:'Draft introduction — AMGCP paper', category:'research', priority:'high', daysAgo:85 },
+  ];
+
+  demos.forEach(t => {
+    if (data.completedTasks.find(c => c.text === t.text)) return;
+    const d = new Date(today); d.setDate(d.getDate() - t.daysAgo);
+    d.setHours(10 + Math.floor(Math.random()*8), Math.floor(Math.random()*59));
+    data.completedTasks.push({
+      id: generateId(), text: t.text, category: t.category, priority: t.priority,
+      deadline: null, createdAt: new Date(d.getTime() - 86400000*3).toISOString(),
+      completedAt: d.toISOString(),
+    });
+  });
+
+  data.completedTasks.sort((a,b) => new Date(b.completedAt) - new Date(a.completedAt));
+  saveData(data);
+}
+
+function getISOWeek(date) {
+  const d = new Date(date); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const y = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d - y) / 86400000) + 1) / 7);
 }
 
 function _showSyncStatus(state) {

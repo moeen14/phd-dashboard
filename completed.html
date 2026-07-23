@@ -57,18 +57,29 @@
 <main class="page" style="max-width:1100px">
 
   <!-- Unified tabs + nav -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <div class="period-tabs" id="mainTabs">
       <button class="period-tab active" data-p="week">Week</button>
       <button class="period-tab" data-p="month">Month</button>
       <button class="period-tab" data-p="year">Year</button>
     </div>
-    <div class="period-nav" style="margin-bottom:0">
-      <button class="period-nav-btn" id="navPrev">← Prev</button>
-      <span class="period-label" id="periodLabel" style="min-width:220px"></span>
-      <button class="period-nav-btn" id="navNext" disabled>Next →</button>
+
+    <!-- Smart period pill nav -->
+    <div class="period-nav-pill">
+      <button class="nav-arrow" id="navPrev" title="Previous period">&#8592;</button>
+      <div class="nav-pill-divider"></div>
+      <div class="nav-pill-center">
+        <div class="nav-period-main" id="navMain">Week 29</div>
+        <div class="nav-period-sub"  id="navSub">Jul 14 – Jul 20, 2026</div>
+      </div>
+      <div class="nav-pill-divider"></div>
+      <button class="nav-arrow" id="navNext" disabled title="Next period">&#8594;</button>
     </div>
-    <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear Completed</button>
+
+    <div style="display:flex;gap:8px">
+      <button class="nav-btn" id="demoBtn" style="font-size:12px;padding:5px 12px;color:var(--text-muted)" title="Populate 90 days of sample data to preview the log">Load demo data</button>
+      <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear completed</button>
+    </div>
   </div>
 
   <!-- ── Hero stats card ── -->
@@ -152,6 +163,13 @@ function init() {
   document.getElementById('navPrev').onclick = () => { offset--; render(); };
   document.getElementById('navNext').onclick = () => { offset++; render(); };
 
+  document.getElementById('demoBtn').onclick = () => {
+    if (confirm('Add 90 days of sample habit history and 20 completed tasks so you can preview the log?')) {
+      seedDemoHistory();
+      render();
+    }
+  };
+
   render();
 }
 
@@ -174,11 +192,28 @@ function getPeriodRange() {
 
 // ── Master render ──────────────────────────────────────────────────────────
 function render() {
-  const { start, end, label } = getPeriodRange();
-  document.getElementById('periodLabel').textContent = label;
+  const { start, end } = getPeriodRange();
   document.getElementById('navNext').disabled = offset >= 0;
 
-  renderSummary(start, end, label);
+  // Populate smart pill nav
+  const fmtDay = d => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  if (period === 'week') {
+    const wn = getISOWeek(start);
+    const yr = end.getFullYear();
+    document.getElementById('navMain').textContent = `Week ${wn}`;
+    document.getElementById('navSub').textContent  = `${fmtDay(start)} – ${fmtDay(end)}, ${yr}`;
+  } else if (period === 'month') {
+    const daysInMonth = new Date(start.getFullYear(), start.getMonth()+1, 0).getDate();
+    document.getElementById('navMain').textContent = start.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    document.getElementById('navSub').textContent  = `Month ${start.getMonth()+1} · ${daysInMonth} days`;
+  } else {
+    const y = start.getFullYear();
+    const isLeap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    document.getElementById('navMain').textContent = String(y);
+    document.getElementById('navSub').textContent  = `Full year · ${isLeap ? 366 : 365} days`;
+  }
+
+  renderSummary(start, end);
   renderStreak(start, end);
   renderCompletedTasks(start, end);
 }
