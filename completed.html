@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log — PhD Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Auth overlay ── -->
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">PhD Dashboard</div>
+    <p class="auth-subtitle">Sign in to view your log.</p>
+    <button id="signInBtn" class="google-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p class="auth-note">Your data is private — only you can access it</p>
+  </div>
+</div>
+
+<!-- ── Loading ── -->
+<div id="loadingScreen" class="auth-overlay hidden">
+  <div class="auth-card">
+    <div class="loading-spinner"></div>
+    <p style="color:var(--text-muted);font-size:14px">Loading your log...</p>
+  </div>
+</div>
+
+<!-- ── Main app ── -->
+<div id="app" class="hidden">
+
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">PhD Dashboard</span>
+    <span class="header-date" id="headerDate"></span>
+    <span class="sync-status" id="syncStatus"></span>
+  </div>
+  <nav class="header-nav">
+    <div class="user-info">
+      <img class="user-avatar" id="userAvatar" src="" alt="" />
+      <span class="user-name" id="userName"></span>
+    </div>
+    <a href="index.html" class="nav-btn">Dashboard</a>
+    <a href="completed.html" class="nav-btn active">Log</a>
+    <button class="nav-btn danger-btn" onclick="signOutUser()">Sign out</button>
+  </nav>
+</header>
+
+<main class="page" style="max-width:1100px">
+
+  <!-- Unified tabs + nav -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div class="period-tabs" id="mainTabs">
+      <button class="period-tab active" data-p="week">Week</button>
+      <button class="period-tab" data-p="month">Month</button>
+      <button class="period-tab" data-p="year">Year</button>
+    </div>
+    <div class="period-nav" style="margin-bottom:0">
+      <button class="period-nav-btn" id="navPrev">← Prev</button>
+      <span class="period-label" id="periodLabel" style="min-width:220px"></span>
+      <button class="period-nav-btn" id="navNext" disabled>Next →</button>
+    </div>
+    <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear Completed</button>
+  </div>
+
+  <!-- ── Hero stats card ── -->
+  <div class="period-summary" id="summaryCard">
+    <div>
+      <div class="period-summary-label">Period</div>
+      <div class="period-summary-period" id="summaryPeriod"></div>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stats" id="summaryStats"></div>
+  </div>
+
+  <!-- ── Habit Streaks ── -->
+  <div style="margin-bottom:8px" class="log-section-title">🔥 Habit Streaks</div>
+  <div class="card" style="margin-bottom:20px">
+    <div id="streakDisplay"></div>
+  </div>
+
+  <!-- ── Completed Tasks ── -->
+  <div style="margin-bottom:8px" class="log-section-title">
+    ✅ Completed Tasks
+    <span class="card-count" id="completedCount" style="margin-left:4px"></span>
+  </div>
+  <div class="card">
+    <div id="completedList"></div>
+  </div>
+
+</main>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+firebase.initializeApp(FIREBASE_CONFIG);
+
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (user) {
+    document.getElementById('authOverlay').classList.add('hidden');
+    document.getElementById('loadingScreen').classList.remove('hidden');
+    await loadFromCloud(user.uid);
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    if (user.photoURL) document.getElementById('userAvatar').src = user.photoURL;
+    document.getElementById('userName').textContent = user.displayName || user.email;
+    init();
+  } else {
+    document.getElementById('authOverlay').classList.remove('hidden');
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
+document.getElementById('signInBtn').onclick = () => {
+  firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(err => alert('Sign-in failed: ' + err.message));
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let period = 'week';
+let offset = 0;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function init() {
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  document.getElementById('clearAllBtn').onclick = () => {
+    if (confirm('Clear all completed tasks? This cannot be undone.')) { clearAllCompleted(); render(); }
+  };
+
+  document.getElementById('mainTabs').addEventListener('click', e => {
+    const btn = e.target.closest('.period-tab'); if (!btn) return;
+    period = btn.dataset.p; offset = 0;
+    document.querySelectorAll('#mainTabs .period-tab').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  document.getElementById('navPrev').onclick = () => { offset--; render(); };
+  document.getElementById('navNext').onclick = () => { offset++; render(); };
+
+  render();
+}
+
+// ── Period range ───────────────────────────────────────────────────────────
+function getPeriodRange() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  if (period === 'week') {
+    const ws = getWeekStart(now); ws.setDate(ws.getDate() + offset * 7);
+    const we = addDays(ws, 6);
+    return { start: ws, end: we, label: `${fmtShort(ws)} – ${fmtShort(we)}` };
+  }
+  if (period === 'month') {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    return { start: d, end: new Date(d.getFullYear(), d.getMonth()+1, 0),
+             label: d.toLocaleDateString('en-US', { month:'long', year:'numeric' }) };
+  }
+  const y = now.getFullYear() + offset;
+  return { start: new Date(y,0,1), end: new Date(y,11,31), label: String(y) };
+}
+
+// ── Master render ──────────────────────────────────────────────────────────
+function render() {
+  const { start, end, label } = getPeriodRange();
+  document.getElementById('periodLabel').textContent = label;
+  document.getElementById('navNext').disabled = offset >= 0;
+
+  renderSummary(start, end, label);
+  renderStreak(start, end);
+  renderCompletedTasks(start, end);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HERO SUMMARY CARD
+// ══════════════════════════════════════════════════════════════════════════
+function renderSummary(start, end) {
+  const data = getData();
+  const { label } = getPeriodRange();
+  document.getElementById('summaryPeriod').textContent = label;
+
+  const tasks = data.completedTasks.filter(t => {
+    if (!t.completedAt) return false;
+    const d = new Date(t.completedAt); d.setHours(0,0,0,0);
+    return d >= start && d <= end;
+  });
+
+  const hours  = getMetricTotal(data, 'hours',  start, end);
+  const papers = getMetricTotal(data, 'papers', start, end);
+  const words  = getMetricTotal(data, 'words',  start, end);
+
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n % 1 === 0 ? n : n.toFixed(1));
+
+  let html = `
+    <div class="summary-stat">
+      <div class="summary-stat-icon">✅</div>
+      <div class="summary-stat-num">${tasks.length}</div>
+      <div class="summary-stat-lbl">Tasks Done</div>
+    </div>`;
+  if (hours > 0) html += `
+    <div class="summary-stat">
+      <div class="summary-stat-icon">⏱</div>
+      <div class="summary-stat-num">${fmt(hours)}</div>
+      <div class="summary-stat-lbl">Work Hours</div>
+    </div>`;
+  if (papers > 0) html += `
+    <div class="summary-stat">
+      <div class="summary-stat-icon">📄</div>
+      <div class="summary-stat-num">${fmt(papers)}</div>
+      <div class="summary-stat-lbl">Papers Read</div>
+    </div>`;
+  if (words > 0) html += `
+    <div class="summary-stat">
+      <div class="summary-stat-icon">✍</div>
+      <div class="summary-stat-num">${fmt(words)}</div>
+      <div class="summary-stat-lbl">Words Written</div>
+    </div>`;
+
+  document.getElementById('summaryStats').innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HABIT STREAK DISPLAY
+// ══════════════════════════════════════════════════════════════════════════
+function renderStreak(start, end) {
+  const { habits } = getData();
+  if (!habits.length) {
+    document.getElementById('streakDisplay').innerHTML =
+      '<div class="streak-empty">No habits added yet. Add daily habits from the Dashboard.</div>';
+    return;
+  }
+
+  if (period === 'week')  renderWeekStreak(habits);
+  else if (period === 'month') renderMonthStreak(habits, start);
+  else renderYearStreak(habits);
+}
+
+// ── Weekly: 7-column row-per-habit ───────────────────────────────────────
+function renderWeekStreak(habits) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ws = getWeekStart(today); ws.setDate(ws.getDate() + offset*7);
+  const days = Array.from({length:7}, (_, i) => addDays(ws, i));
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  let html = `<div class="streak-wrap"><table class="streak-table">
+    <thead><tr>
+      <th class="streak-habit-col">Habit</th>
+      ${days.map((d,i) => {
+        const isToday = dateStr(d) === dateStr(today);
+        return `<th class="${isToday?'today-col':''}" style="min-width:52px">
+          <div>${dayNames[i]}</div><div class="streak-date-num">${d.getDate()}</div>
+        </th>`;
+      }).join('')}
+      <th style="padding-left:14px;white-space:nowrap">Streak</th>
+    </tr></thead><tbody>
+    ${habits.map(h => {
+      const m = h.metric ? HABIT_METRICS[h.metric] : null;
+      const streak = calcStreak(h, today);
+      const weekDone = days.filter(d => d <= today && habitDoneOnDate(h, dateStr(d))).length;
+      const totalSoFar = days.filter(d => d <= today).length;
+      return `<tr>
+        <td class="streak-habit-cell">
+          <div class="habit-badge">
+            <span class="habit-color-dot" style="background:${h.color}"></span>
+            ${esc(h.text)}
+          </div>
+        </td>
+        ${days.map(d => {
+          const ds = dateStr(d);
+          const isFuture = d > today;
+          const isDone = habitDoneOnDate(h, ds);
+          const val = isDone && m ? habitValueOnDate(h, ds) : null;
+          const isToday = ds === dateStr(today);
+          return `<td style="min-width:52px">
+            <div class="streak-dot ${isDone?'done':isFuture?'future':'missed'} ${isToday&&!isFuture?'today-dot':''}"
+              style="${isDone ? `background:${h.color}` : ''}"
+              title="${ds}${isDone?' ✓':''}${val!==null?' — '+val+' '+m.unit:''}"></div>
+            ${val !== null ? `<div class="metric-val" style="color:${h.color}">${val}${m.unit==='hrs'?'h':m.unit==='papers'?'p':'w'}</div>` : ''}
+          </td>`;
+        }).join('')}
+        <td style="padding-left:14px;white-space:nowrap">
+          <span style="font-size:13px;font-weight:800;color:${h.color}">${weekDone}/${totalSoFar}</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${streak} day streak</span>
+          ${m && getMetricTotal(getData(), h.metric, addDays(new Date(), offset*7 - (new Date().getDay()||7)+1), addDays(new Date(), offset*7 + (7 - (new Date().getDay()||7)))) > 0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px">· ${m.icon} ${fmt1(getMetricTotal(getData(), h.metric, getWeekStart(addDays(new Date(), offset*7)), addDays(getWeekStart(addDays(new Date(), offset*7)),6)))} ${m.unit}</span>` : ''}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+
+  html += legendHtml(habits);
+  document.getElementById('streakDisplay').innerHTML = html;
+}
+
+// ── Monthly: compact row-per-habit, all days ─────────────────────────────
+function renderMonthStreak(habits, start) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const year = start.getFullYear(), month = start.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const days = Array.from({length:daysInMonth}, (_, i) => new Date(year, month, i+1));
+
+  let html = `<div class="streak-wrap"><table class="streak-table">
+    <thead><tr>
+      <th class="streak-habit-col">Habit</th>
+      ${days.map(d => {
+        const isToday = dateStr(d) === dateStr(today);
+        return `<th style="padding:0 2px 10px;${isToday?'color:var(--primary-dark);font-weight:800':''}">${d.getDate()}</th>`;
+      }).join('')}
+      <th style="padding-left:12px">Total</th>
+    </tr></thead><tbody>
+    ${habits.map(h => {
+      const m = h.metric ? HABIT_METRICS[h.metric] : null;
+      const streak = calcStreak(h, today);
+      const monthDone = days.filter(d => d <= today && habitDoneOnDate(h, dateStr(d))).length;
+      const monthTotal = days.filter(d => d <= today).length;
+      const metricSum = m ? getMetricTotal(getData(), h.metric, start, new Date(year, month+1, 0)) : 0;
+      return `<tr>
+        <td class="streak-habit-cell">
+          <div class="habit-badge">
+            <span class="habit-color-dot" style="background:${h.color}"></span>${esc(h.text)}
+          </div>
+        </td>
+        ${days.map(d => {
+          const ds = dateStr(d);
+          const isFuture = d > today;
+          const isDone = habitDoneOnDate(h, ds);
+          const val = isDone && m ? habitValueOnDate(h, ds) : null;
+          return `<td style="padding:2px">
+            <div class="streak-dot-sm ${isDone?'done':isFuture?'future':'missed'}"
+              style="${isDone ? `background:${h.color}` : ''}"
+              title="${ds}${isDone?' ✓':''}${val!==null?' — '+val+' '+m.unit:''}"></div>
+          </td>`;
+        }).join('')}
+        <td style="padding-left:12px;white-space:nowrap">
+          <span style="font-size:12px;font-weight:800;color:${h.color}">${monthDone}/${monthTotal}</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:4px">${streak}d</span>
+          ${m && metricSum > 0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px">· ${m.icon} ${fmt1(metricSum)} ${m.unit}</span>` : ''}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+
+  html += legendHtml(habits);
+  document.getElementById('streakDisplay').innerHTML = html;
+}
+
+// ── Yearly: per-habit colored rows, one cell = one week ──────────────────
+function renderYearStreak(habits) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const year = today.getFullYear() + offset;
+
+  // Build 53 weeks starting from first Monday ≤ Jan 1
+  const jan1 = new Date(year, 0, 1);
+  const gridStart = getWeekStart(jan1);
+
+  const weeks = [];
+  const monthAtWeek = {};
+  let d = new Date(gridStart);
+  while (weeks.length < 53) {
+    const week = Array.from({length:7}, () => { const x = new Date(d); d.setDate(d.getDate()+1); return x; });
+    // Track month label
+    week.forEach(wd => { if (wd.getDate() === 1 && wd.getFullYear() === year) monthAtWeek[weeks.length] = wd.toLocaleDateString('en-US',{month:'short'}); });
+    if (week.some(wd => wd.getFullYear() === year)) weeks.push(week);
+    else if (weeks.length > 0) break;
+  }
+
+  // Month label row
+  const cellW = 13; // px width per cell + gap
+  let monthRowHtml = '<div class="year-month-row">';
+  let wi = 0;
+  while (wi < weeks.length) {
+    monthRowHtml += `<div class="year-month-lbl" style="width:${cellW}px">${monthAtWeek[wi] || ''}</div>`;
+    wi++;
+  }
+  monthRowHtml += '</div>';
+
+  // Per-habit rows
+  const rowsHtml = habits.map(h => {
+    const m = h.metric ? HABIT_METRICS[h.metric] : null;
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd   = new Date(year, 11, 31);
+    const totalDone = Object.keys(h.history || {}).filter(ds => {
+      const dt = new Date(ds+'T12:00:00');
+      return dt.getFullYear() === year && habitDoneOnDate(h, ds);
+    }).length;
+    const metricSum = m ? getMetricTotal(getData(), h.metric, yearStart, yearEnd) : 0;
+    const streak = calcStreak(h, today);
+
+    const cellsHtml = weeks.map(week => {
+      const daysDone = week.filter(wd => wd.getFullYear() === year && wd <= today && habitDoneOnDate(h, dateStr(wd))).length;
+      const daysValid = week.filter(wd => wd.getFullYear() === year && wd <= today).length;
+      const allFuture = week.every(wd => wd > today || wd.getFullYear() !== year);
+      const outOfYear = week.every(wd => wd.getFullYear() !== year);
+      if (outOfYear) return `<div class="year-cell" style="background:transparent"></div>`;
+      if (allFuture) return `<div class="year-cell y-future" title="Future"></div>`;
+      if (daysValid === 0) return `<div class="year-cell y-empty"></div>`;
+      const pct = daysDone / daysValid;
+      const alpha = pct === 0 ? 0 : pct <= 0.28 ? 0.25 : pct <= 0.57 ? 0.55 : pct <= 0.85 ? 0.8 : 1;
+      const weekDatesStr = `${dateStr(week[0])} – ${dateStr(week[6])}`;
+      return `<div class="year-cell" style="background:${hexWithAlpha(h.color, alpha)}"
+        title="${weekDatesStr}: ${daysDone}/7 days done"></div>`;
+    }).join('');
+
+    return `<div class="year-streak-row">
+      <div class="year-habit-label">
+        <span class="habit-color-dot" style="background:${h.color};width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0"></span>
+        ${esc(h.text)}
+      </div>
+      <div class="year-cells">${cellsHtml}</div>
+      <div class="year-streak-stat" style="color:${h.color}">
+        ${totalDone}d
+        <span style="color:var(--text-muted);font-weight:400"> · ${streak} streak</span>
+        ${m && metricSum > 0 ? `<span style="color:var(--text-muted)"> · ${m.icon} ${fmt1(metricSum)} ${m.unit}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('streakDisplay').innerHTML = `
+    <div class="year-streak-wrap">
+      ${monthRowHtml}
+      <div class="year-streak-grid">${rowsHtml}</div>
+      <div class="heatmap-legend" style="justify-content:flex-start;margin-top:12px">
+        <span style="font-size:11px;color:var(--text-muted)">Each cell = 1 week · Opacity = days completed that week</span>
+      </div>
+    </div>
+    ${legendHtml(habits)}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// COMPLETED TASKS
+// ══════════════════════════════════════════════════════════════════════════
+function renderCompletedTasks(start, end) {
+  const data = getData();
+  const filtered = data.completedTasks.filter(t => {
+    if (!t.completedAt) return false;
+    const d = new Date(t.completedAt); d.setHours(0,0,0,0);
+    return d >= start && d <= end;
+  });
+
+  document.getElementById('completedCount').textContent = filtered.length;
+
+  const list = document.getElementById('completedList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No tasks completed during this ${period}.</p></div>`;
+    return;
+  }
+
+  // Group by sub-period
+  const groups = {};
+  filtered.forEach(t => {
+    let key;
+    if (period === 'week') {
+      key = new Date(t.completedAt).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+    } else if (period === 'month') {
+      const ws = getWeekStart(new Date(t.completedAt));
+      const we = addDays(ws, 6);
+      key = `Week of ${ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${we.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    } else {
+      key = new Date(t.completedAt).toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    }
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  });
+
+  list.innerHTML = Object.entries(groups).map(([grp, items]) => `
+    <div style="padding:9px 20px 4px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--surface2)">${grp}</div>
+    ${items.map(t => `
+      <div class="completed-item">
+        <div class="completed-check-icon">✓</div>
+        <div class="completed-body">
+          <div class="completed-text">${esc(t.text)}</div>
+          <div class="completed-meta">
+            <span class="tag tag-${t.category}" style="font-size:10px">${t.category}</span>
+            &nbsp;·&nbsp; ${formatDateTime(t.completedAt)}
+            ${t.deadline ? `&nbsp;·&nbsp; Deadline: ${formatDate(t.deadline)}` : ''}
+          </div>
+        </div>
+        <button class="icon-btn" onclick="handleRestore('${t.id}')" title="Restore to active" style="font-size:14px">↩</button>
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function handleRestore(id) { restoreTask(id); render(); }
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function calcStreak(habit, today) {
+  let streak = 0;
+  let d = new Date(today);
+  if (!habitDoneOnDate(habit, dateStr(d))) d.setDate(d.getDate()-1);
+  while (habitDoneOnDate(habit, dateStr(d))) { streak++; d.setDate(d.getDate()-1); }
+  return streak;
+}
+
+function legendHtml(habits) {
+  return `<div class="habit-legend">
+    ${habits.map(h => {
+      const m = h.metric ? HABIT_METRICS[h.metric] : null;
+      return `<div class="habit-legend-item">
+        <span style="width:10px;height:10px;border-radius:50%;background:${h.color};display:inline-block;flex-shrink:0"></span>
+        <span>${esc(h.text)}${m ? ` <span style="color:var(--text-muted)">(${m.icon} ${m.unit})</span>` : ''}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function hexWithAlpha(hex, alpha) {
+  if (alpha === 0) return 'var(--border)';
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function fmt1(n) {
+  if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
