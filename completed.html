@@ -80,12 +80,6 @@
     </div>
   </div>
 
-  <!-- ── Temp: demo data cleanup ── -->
-  <div id="demoCleanupBanner" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-    <span style="font-size:13px;color:#92400e">🧹 <strong>Demo data detected.</strong> Click to remove the fake habit history and completed tasks.</span>
-    <button onclick="handleCleanDemo()" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">Remove demo data</button>
-  </div>
-
   <!-- ── Hero stats card ── -->
   <div class="period-summary" id="summaryCard">
     <div>
@@ -535,23 +529,6 @@ function renderCompletedTasks(start, end) {
 
 function handleRestore(id) { restoreTask(id); render(); }
 
-async function handleCleanDemo() {
-  if (!confirm('This will remove all demo tasks and clear habit history (your habits themselves stay). Continue?')) return;
-  const removed = cleanDemoData();
-  document.getElementById('demoCleanupBanner').innerHTML =
-    '<span style="font-size:13px;color:#92400e">⏳ Saving to cloud, please wait…</span>';
-  try {
-    const uid = firebase.auth().currentUser.uid;
-    await firebase.firestore()
-      .collection('users').doc(uid)
-      .collection('data').doc('main')
-      .set(getData());
-    alert(`Removed ${removed.tasks} demo tasks and all demo history. Reloading now.`);
-    location.reload();
-  } catch(e) {
-    alert('Cloud save failed: ' + e.message + '\nTry reloading manually.');
-  }
-}
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 function calcStreak(habit, today) {
