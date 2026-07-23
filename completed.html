@@ -535,12 +535,14 @@ function renderCompletedTasks(start, end) {
 
 function handleRestore(id) { restoreTask(id); render(); }
 
-function handleCleanDemo() {
+async function handleCleanDemo() {
   if (!confirm('Remove all demo habit history and fake completed tasks? Your real data (past 14 days) will be kept.')) return;
   const removed = cleanDemoData();
-  document.getElementById('demoCleanupBanner').remove();
-  render();
-  alert(`Done! Removed ${removed.tasks} fake tasks and ${removed.dots} fake history entries.`);
+  document.getElementById('demoCleanupBanner').innerHTML =
+    '<span style="font-size:13px;color:#92400e">⏳ Syncing to cloud, please wait…</span>';
+  await forceSyncNow();
+  alert(`Done! Removed ${removed.tasks} fake tasks and ${removed.dots} history entries. Reloading…`);
+  location.reload();
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────

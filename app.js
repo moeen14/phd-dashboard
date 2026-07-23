@@ -170,6 +170,8 @@ function _scheduleCloudSync() {
   _syncTimer = setTimeout(_syncNow, 1500);
 }
 
+async function forceSyncNow() { clearTimeout(_syncTimer); await _syncNow(); }
+
 async function _syncNow() {
   if (!_currentUserId || _isSyncing) return;
   _isSyncing = true;
