@@ -225,16 +225,10 @@ function cleanDemoData() {
   const data = getData();
   const before = data.completedTasks.length;
   data.completedTasks = data.completedTasks.filter(t => !demoTexts.has(t.text));
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
-  let dots = 0;
-  data.habits.forEach(h => {
-    Object.keys(h.history || {}).forEach(ds => {
-      if (ds < cutoffStr) { delete h.history[ds]; dots++; }
-    });
-  });
-  saveData(data);
-  return { tasks: before - data.completedTasks.length, dots };
+  // Wipe all habit history — demo seeded 90 days of fake entries
+  data.habits.forEach(h => { h.history = {}; });
+  localStorage.setItem(DB_KEY, JSON.stringify(data));
+  return { tasks: before - data.completedTasks.length };
 }
 
 function getISOWeek(date) {

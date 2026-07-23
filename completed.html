@@ -536,13 +536,21 @@ function renderCompletedTasks(start, end) {
 function handleRestore(id) { restoreTask(id); render(); }
 
 async function handleCleanDemo() {
-  if (!confirm('Remove all demo habit history and fake completed tasks? Your real data (past 14 days) will be kept.')) return;
+  if (!confirm('This will remove all demo tasks and clear habit history (your habits themselves stay). Continue?')) return;
   const removed = cleanDemoData();
   document.getElementById('demoCleanupBanner').innerHTML =
-    '<span style="font-size:13px;color:#92400e">⏳ Syncing to cloud, please wait…</span>';
-  await forceSyncNow();
-  alert(`Done! Removed ${removed.tasks} fake tasks and ${removed.dots} history entries. Reloading…`);
-  location.reload();
+    '<span style="font-size:13px;color:#92400e">⏳ Saving to cloud, please wait…</span>';
+  try {
+    const uid = firebase.auth().currentUser.uid;
+    await firebase.firestore()
+      .collection('users').doc(uid)
+      .collection('data').doc('main')
+      .set(getData());
+    alert(`Removed ${removed.tasks} demo tasks and all demo history. Reloading now.`);
+    location.reload();
+  } catch(e) {
+    alert('Cloud save failed: ' + e.message + '\nTry reloading manually.');
+  }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────
