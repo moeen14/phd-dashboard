@@ -218,16 +218,28 @@ select.form-input { cursor: pointer; }
 
 .habit-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  flex-direction: column;
+  padding: 8px 12px;
   border-radius: 8px;
   transition: background 0.15s;
-  cursor: pointer;
 }
 .habit-item:hover { background: var(--surface2); }
-.habit-item.done { opacity: 0.55; }
-.habit-item.done .habit-text { text-decoration: line-through; }
+.habit-item.done .habit-text { text-decoration: line-through; opacity: 0.65; }
+
+.habit-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.habit-check-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
 
 .habit-check {
   width: 18px; height: 18px;
@@ -238,15 +250,41 @@ select.form-input { cursor: pointer; }
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
-  cursor: pointer;
-}
-.habit-item.done .habit-check {
-  background: var(--success);
-  border-color: var(--success);
-  color: white;
   font-size: 10px;
+  color: white;
 }
-.habit-text { font-size: 13.5px; flex: 1; }
+
+.habit-text { font-size: 13.5px; flex: 1; min-width: 0; }
+
+/* Metric input row (appears below when habit is checked + has metric) */
+.habit-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0 1px 26px;
+  animation: slideDown 0.2s ease;
+}
+
+.metric-icon { font-size: 13px; }
+
+.metric-input {
+  width: 76px;
+  padding: 4px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  font-family: inherit;
+  -moz-appearance: textfield;
+}
+.metric-input::-webkit-inner-spin-button,
+.metric-input::-webkit-outer-spin-button { opacity: 0.6; }
+.metric-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+.metric-unit { font-size: 11px; color: var(--text-muted); font-weight: 500; }
 
 .habit-progress {
   height: 4px;
@@ -548,6 +586,365 @@ select.form-input { cursor: pointer; }
   .project-grid { grid-template-columns: 1fr; }
   .add-form-row { flex-direction: column; }
   .form-input.small { width: 100%; }
+}
+
+/* ── Period tabs (Week / Month / Year) ── */
+.section-block { margin-bottom: 28px; }
+
+.section-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.period-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.period-tab {
+  padding: 5px 16px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.period-tab.active { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow); }
+.period-tab:hover:not(.active) { color: var(--text); }
+
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.period-nav-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.period-nav-btn:hover { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary); }
+.period-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.period-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  text-align: center;
+}
+
+/* ── Habit color dot ── */
+.habit-color-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Streak grid (weekly / monthly) ── */
+.streak-wrap { overflow-x: auto; padding: 16px 20px; }
+
+.streak-table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+.streak-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0 4px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.streak-table th.today-col { color: var(--primary-dark); }
+
+.streak-habit-col { text-align: left !important; min-width: 180px; max-width: 240px; padding-right: 16px !important; }
+
+.streak-date-num { font-size: 13px; color: var(--text-2); font-weight: 500; }
+
+.streak-table td { padding: 4px; text-align: center; vertical-align: middle; }
+.streak-habit-cell { text-align: left !important; padding-right: 16px !important; }
+
+.habit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.streak-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  margin: 0 auto;
+  border: 1.5px solid var(--border);
+  transition: transform 0.1s;
+}
+.streak-dot.done { border: none; }
+.streak-dot.future { background: var(--bg); border-style: dashed; }
+.streak-dot.missed { background: transparent; }
+.streak-dot.today-dot { box-shadow: 0 0 0 2px var(--primary-light); }
+
+/* Monthly: smaller dots */
+.streak-dot-sm {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin: 0 auto;
+  border: 1.5px solid var(--border);
+}
+.streak-dot-sm.done { border: none; }
+.streak-dot-sm.future { background: var(--bg); border-style: dashed; }
+.streak-dot-sm.missed { background: transparent; }
+
+/* ── Yearly heatmap ── */
+.heatmap-wrap { padding: 16px 20px; overflow-x: auto; }
+
+.heatmap-months {
+  display: flex;
+  gap: 0;
+  margin-bottom: 4px;
+  padding-left: 28px;
+}
+.heatmap-month-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  flex: 1;
+  text-align: left;
+}
+
+.heatmap-body { display: flex; gap: 2px; }
+
+.heatmap-day-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 4px;
+}
+.heatmap-day-label {
+  height: 12px;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 12px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmap-col { display: flex; flex-direction: column; gap: 2px; }
+
+.heatmap-cell {
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  cursor: default;
+  transition: transform 0.1s;
+  position: relative;
+}
+.heatmap-cell:hover { transform: scale(1.4); z-index: 10; }
+.heatmap-cell.none { background: var(--border); }
+.heatmap-cell.future { background: var(--bg); border: 1px dashed var(--border); }
+.heatmap-cell.low { background: #bfdbfe; }
+.heatmap-cell.mid { background: #60a5fa; }
+.heatmap-cell.high { background: #1d4ed8; }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  justify-content: flex-end;
+}
+.heatmap-legend .heatmap-cell { cursor: default; }
+.heatmap-legend .heatmap-cell:hover { transform: none; }
+
+/* Habit legend */
+.habit-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+.habit-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* No habit data state */
+.streak-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Yearly per-habit streak rows ── */
+.year-streak-wrap { overflow-x: auto; padding: 16px 20px; }
+
+.year-month-row {
+  display: flex;
+  margin-bottom: 4px;
+  padding-left: 192px;
+}
+.year-month-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.year-streak-grid { display: flex; flex-direction: column; gap: 6px; }
+
+.year-streak-row { display: flex; align-items: center; gap: 10px; }
+
+.year-habit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 180px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.year-cells { display: flex; gap: 2px; }
+
+.year-cell {
+  width: 11px; height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  cursor: default;
+  transition: transform 0.1s;
+}
+.year-cell:hover { transform: scale(1.6); z-index: 10; }
+.year-cell.y-empty  { background: var(--border); }
+.year-cell.y-future { background: var(--bg); border: 1px dashed var(--border); }
+
+.year-streak-stat {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Period summary hero card ── */
+.period-summary {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #0ea5e9 100%);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  color: white;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  box-shadow: 0 6px 24px rgba(37,99,235,0.28);
+}
+
+.period-summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  opacity: 0.7;
+  margin-bottom: 3px;
+}
+.period-summary-period {
+  font-size: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+
+.summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  flex: 1;
+}
+
+.summary-stat { text-align: center; }
+.summary-stat-icon { font-size: 20px; line-height: 1; margin-bottom: 3px; }
+.summary-stat-num  { font-size: 26px; font-weight: 800; line-height: 1; }
+.summary-stat-lbl  { font-size: 10px; opacity: 0.75; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* ── Log section headers ── */
+.log-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  padding: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Value badge shown next to dots in streak grids */
+.metric-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1;
+  margin-top: 1px;
 }
 
 /* ── Auth overlay ── */

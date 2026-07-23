@@ -310,21 +310,42 @@ function closeForm(formId) {
 function renderHabits() {
   const { habits } = getData();
   const done = habits.filter(h => h.checked).length;
-  const pct = habits.length ? Math.round((done / habits.length) * 100) : 0;
-  document.getElementById('habitsCount').textContent = `${done}/${habits.length}`;
+  const pct  = habits.length ? Math.round((done / habits.length) * 100) : 0;
+  document.getElementById('habitsCount').textContent   = `${done}/${habits.length}`;
   document.getElementById('habitProgressBar').style.width = pct + '%';
-  document.getElementById('habitLabel').textContent = `${done} / ${habits.length} done today`;
-  document.getElementById('habitList').innerHTML = habits.map(h => `
-    <div class="habit-item ${h.checked ? 'done' : ''}" onclick="handleHabitToggle('${h.id}')">
-      <div class="habit-check">${h.checked ? '✓' : ''}</div>
-      <span class="habit-text">${esc(h.text)}</span>
-      <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
-    </div>
-  `).join('') || '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
+  document.getElementById('habitLabel').textContent    = `${done} / ${habits.length} done today`;
+
+  document.getElementById('habitList').innerHTML = habits.map(h => {
+    const m   = h.metric ? HABIT_METRICS[h.metric] : null;
+    const val = h.checked && m ? habitValueOnDate(h, todayStr()) : null;
+    return `
+    <div class="habit-item ${h.checked ? 'done' : ''}">
+      <div class="habit-item-main">
+        <div class="habit-check-area" onclick="handleHabitToggle('${h.id}')">
+          <div class="habit-check" style="border-color:${h.color};${h.checked ? `background:${h.color}` : ''}">${h.checked ? '✓' : ''}</div>
+          <span class="habit-color-dot" style="background:${h.color}"></span>
+          <span class="habit-text">${esc(h.text)}</span>
+        </div>
+        <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
+      </div>
+      ${h.checked && m ? `
+      <div class="habit-metric-row">
+        <span class="metric-icon">${m.icon}</span>
+        <input class="metric-input" type="number" min="0" step="${m.step}"
+               placeholder="${m.placeholder}"
+               value="${val !== null ? val : ''}"
+               onchange="handleMetricChange('${h.id}', this.value)"
+               onkeydown="if(event.key==='Enter') this.blur()"
+               onclick="event.stopPropagation()" />
+        <span class="metric-unit">${m.unit} today</span>
+      </div>` : ''}
+    </div>`;
+  }).join('') || '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
 }
 
 function handleHabitToggle(id) { toggleHabit(id); renderHabits(); updateBadge(); }
 function handleHabitDelete(e, id) { e.stopPropagation(); deleteHabit(id); renderHabits(); }
+function handleMetricChange(id, value) { setHabitMetricValue(id, value); }
 function submitHabit() {
   const input = document.getElementById('habitInput');
   const text = input.value.trim();
