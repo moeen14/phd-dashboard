@@ -80,6 +80,12 @@
     </div>
   </div>
 
+  <!-- ── Temp: demo data cleanup ── -->
+  <div id="demoCleanupBanner" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <span style="font-size:13px;color:#92400e">🧹 <strong>Demo data detected.</strong> Click to remove the fake habit history and completed tasks.</span>
+    <button onclick="handleCleanDemo()" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">Remove demo data</button>
+  </div>
+
   <!-- ── Hero stats card ── -->
   <div class="period-summary" id="summaryCard">
     <div>
@@ -528,6 +534,14 @@ function renderCompletedTasks(start, end) {
 }
 
 function handleRestore(id) { restoreTask(id); render(); }
+
+function handleCleanDemo() {
+  if (!confirm('Remove all demo habit history and fake completed tasks? Your real data (past 14 days) will be kept.')) return;
+  const removed = cleanDemoData();
+  document.getElementById('demoCleanupBanner').remove();
+  render();
+  alert(`Done! Removed ${removed.tasks} fake tasks and ${removed.dots} fake history entries.`);
+}
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 function calcStreak(habit, today) {

@@ -207,6 +207,34 @@ async function loadFromCloud(uid) {
 }
 
 
+function cleanDemoData() {
+  const demoTexts = new Set([
+    'Literature review: soft robot locomotion','Update AMGCP circuit diagrams',
+    'Weekly lab meeting notes','Submit ASABE registration form',
+    'Read: Zhang et al. 2024 (navigation CI)','AMGCP sensor calibration write-up',
+    'Email Dr. Chen about poster format','Chapter 2 draft — intro section',
+    'Coursework: controls problem set 4','Review AIMS paper reviewer comments',
+    'Lab equipment inventory check','Read: Doe et al. 2023 (sim-to-real gap)',
+    'AMGCP status update slides for Dr. T','Finish coursework midterm project',
+    'Write abstract for ASABE 2026','Order replacement sensors (AMGCP)',
+    'Read: Peng et al. 2022 (RL locomotion)','Coursework: final report submission',
+    'Soft robot CAD model update','Draft introduction — AMGCP paper',
+  ]);
+  const data = getData();
+  const before = data.completedTasks.length;
+  data.completedTasks = data.completedTasks.filter(t => !demoTexts.has(t.text));
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  let dots = 0;
+  data.habits.forEach(h => {
+    Object.keys(h.history || {}).forEach(ds => {
+      if (ds < cutoffStr) { delete h.history[ds]; dots++; }
+    });
+  });
+  saveData(data);
+  return { tasks: before - data.completedTasks.length, dots };
+}
+
 function getISOWeek(date) {
   const d = new Date(date); d.setHours(0,0,0,0);
   d.setDate(d.getDate() + 4 - (d.getDay() || 7));
