@@ -56,16 +56,22 @@
 
 <main class="page" style="max-width:1100px">
 
-  <!-- Unified tabs + nav -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <!-- Row 1: tabs + action buttons -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div class="period-tabs" id="mainTabs">
       <button class="period-tab active" data-p="week">Week</button>
       <button class="period-tab" data-p="month">Month</button>
       <button class="period-tab" data-p="year">Year</button>
     </div>
+    <div style="display:flex;gap:8px">
+      <button class="nav-btn" id="demoBtn" style="font-size:12px;padding:5px 12px">Load demo data</button>
+      <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear completed</button>
+    </div>
+  </div>
 
-    <!-- Smart period pill nav -->
-    <div class="period-nav-pill">
+  <!-- Row 2: smart period pill nav, centered -->
+  <div style="text-align:center;margin-bottom:20px">
+    <div class="period-nav-pill" style="display:inline-flex">
       <button class="nav-arrow" id="navPrev" title="Previous period">&#8592;</button>
       <div class="nav-pill-divider"></div>
       <div class="nav-pill-center">
@@ -74,11 +80,6 @@
       </div>
       <div class="nav-pill-divider"></div>
       <button class="nav-arrow" id="navNext" disabled title="Next period">&#8594;</button>
-    </div>
-
-    <div style="display:flex;gap:8px">
-      <button class="nav-btn" id="demoBtn" style="font-size:12px;padding:5px 12px;color:var(--text-muted)" title="Populate 90 days of sample data to preview the log">Load demo data</button>
-      <button class="nav-btn danger-btn" id="clearAllBtn" style="font-size:12px;padding:5px 12px">Clear completed</button>
     </div>
   </div>
 
@@ -280,6 +281,17 @@ function renderStreak(start, end) {
   if (period === 'week')  renderWeekStreak(habits);
   else if (period === 'month') renderMonthStreak(habits, start);
   else renderYearStreak(habits);
+
+  // Metric summary strip at the bottom
+  const strip = document.createElement('div');
+  strip.innerHTML = metricStripHtml(start, end);
+  document.getElementById('streakDisplay').appendChild(strip);
+  const dsb = document.getElementById('demoStripBtn');
+  if (dsb) dsb.onclick = () => {
+    if (confirm('Add 90 days of sample habit history and 20 completed tasks so you can preview the log?')) {
+      seedDemoHistory(); render();
+    }
+  };
 }
 
 // ── Weekly: 7-column row-per-habit ───────────────────────────────────────
@@ -328,13 +340,11 @@ function renderWeekStreak(habits) {
         <td style="padding-left:14px;white-space:nowrap">
           <span style="font-size:13px;font-weight:800;color:${h.color}">${weekDone}/${totalSoFar}</span>
           <span style="font-size:11px;color:var(--text-muted);margin-left:6px">${streak} day streak</span>
-          ${m && getMetricTotal(getData(), h.metric, addDays(new Date(), offset*7 - (new Date().getDay()||7)+1), addDays(new Date(), offset*7 + (7 - (new Date().getDay()||7)))) > 0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px">· ${m.icon} ${fmt1(getMetricTotal(getData(), h.metric, getWeekStart(addDays(new Date(), offset*7)), addDays(getWeekStart(addDays(new Date(), offset*7)),6)))} ${m.unit}</span>` : ''}
         </td>
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
 
-  html += legendHtml(habits);
   document.getElementById('streakDisplay').innerHTML = html;
 }
 
@@ -359,7 +369,6 @@ function renderMonthStreak(habits, start) {
       const streak = calcStreak(h, today);
       const monthDone = days.filter(d => d <= today && habitDoneOnDate(h, dateStr(d))).length;
       const monthTotal = days.filter(d => d <= today).length;
-      const metricSum = m ? getMetricTotal(getData(), h.metric, start, new Date(year, month+1, 0)) : 0;
       return `<tr>
         <td class="streak-habit-cell">
           <div class="habit-badge">
@@ -380,13 +389,11 @@ function renderMonthStreak(habits, start) {
         <td style="padding-left:12px;white-space:nowrap">
           <span style="font-size:12px;font-weight:800;color:${h.color}">${monthDone}/${monthTotal}</span>
           <span style="font-size:11px;color:var(--text-muted);margin-left:4px">${streak}d</span>
-          ${m && metricSum > 0 ? `<span style="font-size:11px;color:var(--text-muted);margin-left:4px">· ${m.icon} ${fmt1(metricSum)} ${m.unit}</span>` : ''}
         </td>
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
 
-  html += legendHtml(habits);
   document.getElementById('streakDisplay').innerHTML = html;
 }
 
@@ -422,14 +429,10 @@ function renderYearStreak(habits) {
 
   // Per-habit rows
   const rowsHtml = habits.map(h => {
-    const m = h.metric ? HABIT_METRICS[h.metric] : null;
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd   = new Date(year, 11, 31);
     const totalDone = Object.keys(h.history || {}).filter(ds => {
       const dt = new Date(ds+'T12:00:00');
       return dt.getFullYear() === year && habitDoneOnDate(h, ds);
     }).length;
-    const metricSum = m ? getMetricTotal(getData(), h.metric, yearStart, yearEnd) : 0;
     const streak = calcStreak(h, today);
 
     const cellsHtml = weeks.map(week => {
@@ -456,7 +459,6 @@ function renderYearStreak(habits) {
       <div class="year-streak-stat" style="color:${h.color}">
         ${totalDone}d
         <span style="color:var(--text-muted);font-weight:400"> · ${streak} streak</span>
-        ${m && metricSum > 0 ? `<span style="color:var(--text-muted)"> · ${m.icon} ${fmt1(metricSum)} ${m.unit}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -468,8 +470,7 @@ function renderYearStreak(habits) {
       <div class="heatmap-legend" style="justify-content:flex-start;margin-top:12px">
         <span style="font-size:11px;color:var(--text-muted)">Each cell = 1 week · Opacity = days completed that week</span>
       </div>
-    </div>
-    ${legendHtml(habits)}`;
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -528,6 +529,61 @@ function renderCompletedTasks(start, end) {
 }
 
 function handleRestore(id) { restoreTask(id); render(); }
+
+// ── Metric strip (bottom of streak card) ──────────────────────────────────
+function metricStripHtml(start, end) {
+  const data = getData();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'k' : (n % 1 === 0 ? String(n) : n.toFixed(1));
+
+  // Task accomplishments
+  const completedInPeriod = (data.completedTasks || []).filter(t => {
+    if (!t.completedAt) return false;
+    const d = new Date(t.completedAt); d.setHours(0,0,0,0);
+    return d >= start && d <= end;
+  });
+  const tasksDone    = completedInPeriod.length;
+  const deadlinesMet = completedInPeriod.filter(t => !!t.deadline).length;
+
+  // Habit goal rate: days completed / days possible across all habits
+  let possible = 0, done = 0;
+  (data.habits || []).forEach(h => {
+    let d = new Date(start);
+    while (d <= end && d <= today) {
+      possible++;
+      if (habitDoneOnDate(h, dateStr(d))) done++;
+      d.setDate(d.getDate() + 1);
+    }
+  });
+  const goalPct = possible > 0 ? Math.round(done / possible * 100) : null;
+
+  // Metric totals
+  const hours  = getMetricTotal(data, 'hours',  start, end);
+  const papers = getMetricTotal(data, 'papers', start, end);
+  const words  = getMetricTotal(data, 'words',  start, end);
+
+  const hasData = tasksDone > 0 || hours > 0 || papers > 0 || words > 0;
+  if (!hasData) {
+    return `<div class="metric-strip">
+      <span style="font-size:12px;color:var(--text-muted)">No data yet —</span>
+      <button class="nav-btn" id="demoStripBtn" style="font-size:12px;padding:3px 10px;margin-left:6px">Load demo data</button>
+    </div>`;
+  }
+
+  const si  = s   => `<span class="metric-strip-item">${s}</span>`;
+  const su  = s   => `<span class="metric-strip-unit">${s}</span>`;
+  const sep = '<span class="metric-strip-sep">·</span>';
+
+  const items = [];
+  items.push(si(`✅ <strong>${tasksDone}</strong> ${su('tasks done')}`));
+  if (deadlinesMet > 0) items.push(si(`📅 <strong>${deadlinesMet}</strong> ${su('deadlines met')}`));
+  if (goalPct !== null) items.push(si(`🎯 <strong>${goalPct}%</strong> ${su('goal rate')}`));
+  if (hours  > 0) items.push(si(`⏱ <strong>${fmt(hours)}</strong> ${su('work hrs')}`));
+  if (papers > 0) items.push(si(`📄 <strong>${fmt(papers)}</strong> ${su('papers')}`));
+  if (words  > 0) items.push(si(`✍ <strong>${fmt(words)}</strong> ${su('words')}`));
+
+  return `<div class="metric-strip">${items.join(sep)}</div>`;
+}
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 function calcStreak(habit, today) {
