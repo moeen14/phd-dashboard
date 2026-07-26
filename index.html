@@ -42,9 +42,13 @@
   <div class="header-left">
     <span class="header-logo">PhD Dashboard</span>
     <div class="header-date-nav">
-      <button class="header-date-btn" onclick="shiftDate(-1)" title="Previous day">‹</button>
+      <button class="header-date-btn" onclick="shiftDate(-1)" title="Previous day">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
       <span class="header-date" id="headerDate"></span>
-      <button class="header-date-btn" id="dateNavNext" onclick="shiftDate(1)" title="Next day" disabled>›</button>
+      <button class="header-date-btn" id="dateNavNext" onclick="shiftDate(1)" title="Next day" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
     <span class="sync-status" id="syncStatus"></span>
   </div>
@@ -252,9 +256,9 @@ let selectedDate  = todayStr();
 function shiftDate(delta) {
   const d = new Date(selectedDate + 'T12:00:00');
   d.setDate(d.getDate() + delta);
-  const today = new Date(); today.setHours(0,0,0,0);
-  if (d > today) return;
-  selectedDate = d.toISOString().split('T')[0];
+  const next = d.toISOString().split('T')[0];
+  if (next > todayStr()) return;
+  selectedDate = next;
   renderDateNav();
   renderHabits();
 }
@@ -441,7 +445,7 @@ function handleTaskComplete(id) {
   const el = document.getElementById('task-' + id);
   if (!el) return;
   el.classList.add('completing');
-  setTimeout(() => { completeTask(id); renderTasks(); updateBadge(); }, 350);
+  setTimeout(() => { completeTask(id, selectedDate); renderTasks(); updateBadge(); }, 350);
 }
 function handleTaskDelete(id) { deleteTask(id); renderTasks(); }
 function submitTask() {

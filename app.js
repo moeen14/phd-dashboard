@@ -314,12 +314,14 @@ function deleteHabit(id) {
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────
-function completeTask(id) {
+function completeTask(id, ds) {
   const data = getData();
   const idx = data.tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
   const [task] = data.tasks.splice(idx, 1);
-  task.completedAt = new Date().toISOString();
+  task.completedAt = ds && ds !== todayStr()
+    ? new Date(ds + 'T12:00:00').toISOString()
+    : new Date().toISOString();
   data.completedTasks.unshift(task);
   saveData(data);
 }
