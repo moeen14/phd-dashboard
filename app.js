@@ -319,9 +319,9 @@ function completeTask(id, ds) {
   const idx = data.tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
   const [task] = data.tasks.splice(idx, 1);
-  task.completedAt = ds && ds !== todayStr()
-    ? new Date(ds + 'T12:00:00').toISOString()
-    : new Date().toISOString();
+  const dateKey = ds || todayStr();
+  const parts = dateKey.split('-');
+  task.completedAt = new Date(+parts[0], +parts[1] - 1, +parts[2], 12, 0, 0).toISOString();
   data.completedTasks.unshift(task);
   saveData(data);
 }
