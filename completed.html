@@ -224,6 +224,7 @@ function renderSummary(start, end) {
   });
 
   const hours  = getMetricTotal(data, 'hours',  start, end);
+  const phone  = getMetricTotal(data, 'phone',  start, end);
   const papers = getMetricTotal(data, 'papers', start, end);
   const words  = getMetricTotal(data, 'words',  start, end);
 
@@ -259,6 +260,12 @@ function renderSummary(start, end) {
       <div class="summary-stat-icon">⏱</div>
       <div class="summary-stat-num">${fmt(hours)}</div>
       <div class="summary-stat-lbl">Work Hours</div>
+    </div>`;
+  if (phone > 0) html += `
+    <div class="summary-stat">
+      <div class="summary-stat-icon">📱</div>
+      <div class="summary-stat-num">${fmt(phone)}</div>
+      <div class="summary-stat-lbl">Phone Hours</div>
     </div>`;
   if (papers > 0) html += `
     <div class="summary-stat">

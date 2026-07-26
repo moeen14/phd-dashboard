@@ -16,7 +16,11 @@ const HABIT_METRICS = {
   hours:  { label: 'Work Hours',    unit: 'hrs',    icon: '⏱', placeholder: '8',   step: '0.5' },
   papers: { label: 'Papers Read',   unit: 'papers', icon: '📄', placeholder: '1',   step: '1'   },
   words:  { label: 'Words Written', unit: 'words',  icon: '✍', placeholder: '500', step: '50'  },
+  phone:  { label: 'Phone Usage',   unit: 'hrs',    icon: '📱', placeholder: '2',   step: '0.5' },
 };
+
+// Default icon pool for new habits
+const HABIT_ICON_POOL = ['💡','🏃','💪','🌱','⭐','🎯','🔬','📊','🎨','🧘','📌','🔑'];
 
 // ── Cloud sync state ──────────────────────────────────────────────────────
 let _currentUserId = null;
@@ -24,21 +28,22 @@ let _syncTimer = null;
 let _isSyncing = false;
 
 // ── Migration ─────────────────────────────────────────────────────────────
+const DEFAULT_ICONS = { h1:'⏰', h2:'📱', h3:'📝', h4:'📚', h5:'✍️' };
+
 function migrateData(data) {
   if (!data.habits) return data;
   data.habits.forEach((h, i) => {
     if (!h.color)   h.color   = HABIT_COLORS[i % HABIT_COLORS.length];
     if (!h.history) h.history = {};
     if (typeof h.metric === 'undefined') h.metric = null;
+    if (!h.icon)    h.icon    = DEFAULT_ICONS[h.id] || HABIT_ICON_POOL[i % HABIT_ICON_POOL.length];
 
     // Rename old "Check on Goals" to "Practice Writing"
-    if (h.text === 'Check on Goals') {
-      h.text   = 'Practice Writing';
-      h.metric = 'words';
-    }
+    if (h.text === 'Check on Goals') { h.text = 'Practice Writing'; h.metric = 'words'; }
 
     // Auto-assign metrics to known habit IDs if not already set
     if (h.id === 'h1' && !h.metric) h.metric = 'hours';
+    if (h.id === 'h2' && !h.metric) h.metric = 'phone';
     if (h.id === 'h4' && !h.metric) h.metric = 'papers';
     if (h.id === 'h5' && !h.metric) h.metric = 'words';
   });
@@ -77,11 +82,11 @@ function seedData() {
   const now = new Date().toISOString();
   const data = {
     habits: [
-      { id: 'h1', text: 'Check timing / priority (2 AM to 2 PM)', checked: false, color: HABIT_COLORS[0], history: {}, metric: 'hours'  },
-      { id: 'h2', text: 'Check phone timing',                      checked: false, color: HABIT_COLORS[1], history: {}, metric: null    },
-      { id: 'h3', text: 'Note in calendar / daily log',            checked: false, color: HABIT_COLORS[2], history: {}, metric: null    },
-      { id: 'h4', text: 'Paper reading',                           checked: false, color: HABIT_COLORS[3], history: {}, metric: 'papers' },
-      { id: 'h5', text: 'Practice Writing',                        checked: false, color: HABIT_COLORS[4], history: {}, metric: 'words'  },
+      { id: 'h1', text: 'Check timing / priority (2 AM to 2 PM)', checked: false, color: HABIT_COLORS[0], history: {}, metric: 'hours',  icon: '⏰' },
+      { id: 'h2', text: 'Check phone timing',                      checked: false, color: HABIT_COLORS[1], history: {}, metric: 'phone',  icon: '📱' },
+      { id: 'h3', text: 'Note in calendar / daily log',            checked: false, color: HABIT_COLORS[2], history: {}, metric: null,     icon: '📝' },
+      { id: 'h4', text: 'Paper reading',                           checked: false, color: HABIT_COLORS[3], history: {}, metric: 'papers', icon: '📚' },
+      { id: 'h5', text: 'Practice Writing',                        checked: false, color: HABIT_COLORS[4], history: {}, metric: 'words',  icon: '✍️' },
     ],
     habitsLastReset: todayStr(),
     tasks: [
@@ -264,39 +269,41 @@ function maybeResetWeeklyGoals(data) {
   }
 }
 
-function toggleHabit(id) {
+function toggleHabit(id, ds) {
+  const dateKey = ds || todayStr();
   const data = getData();
   const h = data.habits.find(h => h.id === id);
   if (!h) return;
-  h.checked = !h.checked;
   if (!h.history) h.history = {};
-  const ds = todayStr();
-  if (h.checked) {
-    // Preserve any existing value if re-checking
-    const existing = h.history[ds];
+  const currentlyDone = habitDoneOnDate(h, dateKey);
+  if (!currentlyDone) {
+    const existing = h.history[dateKey];
     const existingVal = (existing && typeof existing === 'object') ? existing.value : null;
-    h.history[ds] = h.metric ? { done: true, value: existingVal } : true;
+    h.history[dateKey] = h.metric ? { done: true, value: existingVal } : true;
   } else {
-    delete h.history[ds];
+    delete h.history[dateKey];
   }
+  if (dateKey === todayStr()) h.checked = !currentlyDone;
   saveData(data);
 }
 
-function setHabitMetricValue(id, rawValue) {
+function setHabitMetricValue(id, rawValue, ds) {
+  const dateKey = ds || todayStr();
   const data = getData();
   const h = data.habits.find(h => h.id === id);
-  if (!h || !h.checked) return;
+  if (!h || !habitDoneOnDate(h, dateKey)) return;
   const v = parseFloat(rawValue);
-  const ds = todayStr();
-  h.history[ds] = { done: true, value: isNaN(v) ? null : v };
+  h.history[dateKey] = { done: true, value: isNaN(v) ? null : v };
   saveData(data);
 }
 
 function addHabit(text) {
   const data = getData();
-  const used = new Set(data.habits.map(h => h.color));
-  const color = HABIT_COLORS.find(c => !used.has(c)) || HABIT_COLORS[data.habits.length % HABIT_COLORS.length];
-  data.habits.push({ id: generateId(), text, checked: false, color, history: {}, metric: null });
+  const usedColors = new Set(data.habits.map(h => h.color));
+  const color = HABIT_COLORS.find(c => !usedColors.has(c)) || HABIT_COLORS[data.habits.length % HABIT_COLORS.length];
+  const usedIcons = new Set(data.habits.map(h => h.icon));
+  const icon = HABIT_ICON_POOL.find(i => !usedIcons.has(i)) || HABIT_ICON_POOL[data.habits.length % HABIT_ICON_POOL.length];
+  data.habits.push({ id: generateId(), text, checked: false, color, history: {}, metric: null, icon });
   saveData(data);
 }
 

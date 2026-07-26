@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>PhD Dashboard</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -70,14 +67,22 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="icon">☀️</span> Daily Habits <span class="card-count" id="habitsCount"></span></span>
+          <div class="date-nav">
+            <button class="date-nav-btn" onclick="shiftDate(-1)" title="Previous day">‹</button>
+            <div class="date-nav-center">
+              <div class="date-nav-label" id="dateNavLabel">Today</div>
+              <div class="date-nav-date"  id="dateNavDate"></div>
+            </div>
+            <button class="date-nav-btn" id="dateNavNext" onclick="shiftDate(1)" title="Next day" disabled>›</button>
+          </div>
           <button class="icon-btn" id="addHabitBtn" title="Add habit">+</button>
         </div>
         <div class="card-body">
           <div class="habit-progress">
             <div class="habit-progress-bar" id="habitProgressBar" style="width:0%"></div>
           </div>
-          <div class="habit-label" id="habitLabel">0 / 0 done today</div>
-          <div class="habit-list" id="habitList"></div>
+          <div class="habit-label" id="habitLabel">0 / 0 done</div>
+          <div id="habitList"></div>
         </div>
         <div class="add-form" id="habitAddForm">
           <div class="add-form-row">
@@ -245,17 +250,53 @@ document.getElementById('signInBtn').onclick = () => {
 
 // ── Dashboard logic ───────────────────────────────────────────────────────
 let activeFilter = 'all';
+let selectedDate  = todayStr();
+
+function shiftDate(delta) {
+  const d = new Date(selectedDate + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (d > today) return;
+  selectedDate = d.toISOString().split('T')[0];
+  renderDateNav();
+  renderHabits();
+}
+
+function renderDateNav() {
+  const d = new Date(selectedDate + 'T12:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((today - d) / 86400000);
+  const label = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' :
+    d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  document.getElementById('dateNavLabel').textContent = label;
+  document.getElementById('dateNavDate').textContent  =
+    d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  document.getElementById('dateNavNext').disabled = diff === 0;
+}
 
 function init() {
   const data = getData();
   maybeResetHabits(data);
   maybeResetWeeklyGoals(data);
 
+  // Auto-reset habits at midnight if tab stays open
+  const msUntilMidnight = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()+1) - now;
+  };
+  setTimeout(function midnight() {
+    maybeResetHabits(getData());
+    if (selectedDate !== todayStr()) { selectedDate = todayStr(); renderDateNav(); }
+    renderHabits();
+    setTimeout(midnight, msUntilMidnight());
+  }, msUntilMidnight());
+
   document.getElementById('headerDate').textContent =
     new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   document.getElementById('completedBadge').textContent = getData().completedTasks.length;
 
+  renderDateNav();
   renderHabits();
   renderTasks();
   renderProjects();
@@ -312,44 +353,54 @@ function closeForm(formId) {
 // ── Habits ────────────────────────────────────────────────────────────────
 function renderHabits() {
   const { habits } = getData();
-  const done = habits.filter(h => h.checked).length;
+  const isToday = selectedDate === todayStr();
+  const done = habits.filter(h => habitDoneOnDate(h, selectedDate)).length;
   const pct  = habits.length ? Math.round((done / habits.length) * 100) : 0;
-  document.getElementById('habitsCount').textContent   = `${done}/${habits.length}`;
+  document.getElementById('habitsCount').textContent      = `${done}/${habits.length}`;
   document.getElementById('habitProgressBar').style.width = pct + '%';
-  document.getElementById('habitLabel').textContent    = `${done} / ${habits.length} done today`;
+  document.getElementById('habitLabel').textContent       = `${done} / ${habits.length} done${isToday ? ' today' : ''}`;
 
-  const checkColor = c => c || '#94a3b8';
-  document.getElementById('habitList').innerHTML = habits.map(h => {
-    const m   = h.metric ? HABIT_METRICS[h.metric] : null;
-    const val = h.checked && m ? habitValueOnDate(h, todayStr()) : null;
-    const col = checkColor(h.color);
-    return `
-    <div class="habit-item ${h.checked ? 'done' : ''}">
-      <div class="habit-check"
-           style="${h.checked ? `background:${col};border-color:${col}` : `border-color:${col}`}"
-           onclick="handleHabitToggle('${h.id}')">${h.checked ? '✓' : ''}</div>
-      <span class="habit-color-dot" style="background:${col};margin-top:4px;flex-shrink:0"></span>
-      <div class="habit-body" onclick="handleHabitToggle('${h.id}')">
-        <div class="habit-text">${esc(h.text)}</div>
-        ${h.checked && m ? `
-        <div class="habit-metric-row" onclick="event.stopPropagation()">
-          <span class="metric-icon">${m.icon}</span>
-          <input class="metric-input" type="number" min="0" step="${m.step}"
-                 placeholder="${m.placeholder}"
-                 value="${val !== null ? val : ''}"
-                 onchange="handleMetricChange('${h.id}', this.value)"
-                 onkeydown="if(event.key==='Enter')this.blur()" />
-          <span class="metric-unit">${m.unit} today</span>
-        </div>` : ''}
-      </div>
-      <button class="icon-btn danger" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
+  if (!habits.length) {
+    document.getElementById('habitList').innerHTML =
+      '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
+    return;
+  }
+
+  const iconRow = habits.map(h => {
+    const isDone = habitDoneOnDate(h, selectedDate);
+    const col = h.color || '#94a3b8';
+    return `<div class="habit-icon-btn ${isDone ? 'done' : ''}"
+      style="${isDone ? `background:${col};border-color:${col}` : `border-color:${col}`}"
+      onclick="handleHabitToggle('${h.id}')" title="${esc(h.text)}">
+      <span class="habit-icon-emoji">${h.icon || '●'}</span>
+      ${isDone ? '<span class="habit-icon-tick">✓</span>' : ''}
+      <button class="habit-icon-del" onclick="handleHabitDelete(event,'${h.id}')" title="Delete">×</button>
     </div>`;
-  }).join('') || '<div class="text-muted" style="padding:8px 0;font-size:13px">No habits yet — add one!</div>';
+  }).join('');
+
+  const metricRow = habits
+    .filter(h => habitDoneOnDate(h, selectedDate) && h.metric)
+    .map(h => {
+      const m = HABIT_METRICS[h.metric];
+      const val = habitValueOnDate(h, selectedDate);
+      return `<div class="habit-metric-inline">
+        <span style="color:${h.color};font-size:14px">${m.icon}</span>
+        <input class="metric-input" type="number" min="0" step="${m.step}"
+               placeholder="${m.placeholder}" value="${val !== null ? val : ''}"
+               onchange="handleMetricChange('${h.id}',this.value)"
+               onkeydown="if(event.key==='Enter')this.blur()" />
+        <span class="metric-unit">${m.unit}</span>
+      </div>`;
+    }).join('');
+
+  document.getElementById('habitList').innerHTML =
+    `<div class="habit-icon-row">${iconRow}</div>` +
+    (metricRow ? `<div class="habit-metric-strip">${metricRow}</div>` : '');
 }
 
-function handleHabitToggle(id) { toggleHabit(id); renderHabits(); updateBadge(); }
+function handleHabitToggle(id) { toggleHabit(id, selectedDate); renderHabits(); updateBadge(); }
 function handleHabitDelete(e, id) { e.stopPropagation(); deleteHabit(id); renderHabits(); }
-function handleMetricChange(id, value) { setHabitMetricValue(id, value); }
+function handleMetricChange(id, value) { setHabitMetricValue(id, value, selectedDate); }
 function submitHabit() {
   const input = document.getElementById('habitInput');
   const text = input.value.trim();
