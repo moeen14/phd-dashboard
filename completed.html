@@ -501,8 +501,12 @@ function renderCompletedTasks(start, end) {
     return;
   }
 
+  // Sort newest first
+  filtered.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
   // Group by sub-period
   const groups = {};
+  const groupOrder = [];
   filtered.forEach(t => {
     let key;
     if (period === 'week') {
@@ -514,11 +518,11 @@ function renderCompletedTasks(start, end) {
     } else {
       key = new Date(t.completedAt).toLocaleDateString('en-US', { month:'long', year:'numeric' });
     }
-    if (!groups[key]) groups[key] = [];
+    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
     groups[key].push(t);
   });
 
-  list.innerHTML = Object.entries(groups).map(([grp, items]) => `
+  list.innerHTML = groupOrder.map(grp => { const items = groups[grp]; return `
     <div style="padding:9px 20px 4px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--surface2)">${grp}</div>
     ${items.map(t => `
       <div class="completed-item">
@@ -534,7 +538,7 @@ function renderCompletedTasks(start, end) {
         <button class="icon-btn" onclick="handleRestore('${t.id}')" title="Restore to active" style="font-size:14px">↩</button>
       </div>
     `).join('')}
-  `).join('');
+  `; }).join('');
 }
 
 function handleRestore(id) { restoreTask(id); render(); }
