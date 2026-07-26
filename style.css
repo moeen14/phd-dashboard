@@ -214,39 +214,34 @@ select.form-input { cursor: pointer; }
 .btn-ghost:hover { background: var(--bg); }
 
 /* ── Habit items ── */
-/* ── Date navigator ── */
-.date-nav {
+/* ── Header date navigator ── */
+.header-date-nav {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 2px 6px;
 }
-.date-nav-btn {
+.header-date-btn {
   background: none;
   border: none;
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
-  padding: 2px 5px;
+  padding: 2px 6px;
   color: var(--text-muted);
-  border-radius: 50%;
-  transition: background 0.12s;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+  opacity: 0.7;
 }
-.date-nav-btn:hover:not(:disabled) { background: var(--primary-light); color: var(--primary-dark); }
-.date-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-.date-nav-center { text-align: center; min-width: 86px; }
-.date-nav-label { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
-.date-nav-date  { font-size: 10px; color: var(--text-muted); }
+.header-date-btn:hover:not(:disabled) { background: rgba(255,255,255,0.15); opacity: 1; }
+.header-date-btn:disabled { opacity: 0.2; cursor: not-allowed; }
 
 /* ── Compact habit icon grid ── */
 .habit-icon-row {
   display: flex;
-  gap: 10px;
+  justify-content: space-evenly;
   padding: 6px 0 4px;
   flex-wrap: wrap;
+  gap: 6px;
 }
 .habit-icon-btn {
   width: 46px;

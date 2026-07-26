@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PhD Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -40,7 +41,11 @@
 <header class="header">
   <div class="header-left">
     <span class="header-logo">PhD Dashboard</span>
-    <span class="header-date" id="headerDate"></span>
+    <div class="header-date-nav">
+      <button class="header-date-btn" onclick="shiftDate(-1)" title="Previous day">‹</button>
+      <span class="header-date" id="headerDate"></span>
+      <button class="header-date-btn" id="dateNavNext" onclick="shiftDate(1)" title="Next day" disabled>›</button>
+    </div>
     <span class="sync-status" id="syncStatus"></span>
   </div>
   <nav class="header-nav">
@@ -67,14 +72,6 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title"><span class="icon">☀️</span> Daily Habits <span class="card-count" id="habitsCount"></span></span>
-          <div class="date-nav">
-            <button class="date-nav-btn" onclick="shiftDate(-1)" title="Previous day">‹</button>
-            <div class="date-nav-center">
-              <div class="date-nav-label" id="dateNavLabel">Today</div>
-              <div class="date-nav-date"  id="dateNavDate"></div>
-            </div>
-            <button class="date-nav-btn" id="dateNavNext" onclick="shiftDate(1)" title="Next day" disabled>›</button>
-          </div>
           <button class="icon-btn" id="addHabitBtn" title="Add habit">+</button>
         </div>
         <div class="card-body">
@@ -266,11 +263,11 @@ function renderDateNav() {
   const d = new Date(selectedDate + 'T12:00:00');
   const today = new Date(); today.setHours(0,0,0,0);
   const diff = Math.round((today - d) / 86400000);
-  const label = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' :
-    d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
-  document.getElementById('dateNavLabel').textContent = label;
-  document.getElementById('dateNavDate').textContent  =
-    d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  let label;
+  if (diff === 0)      label = 'Today · ' + d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  else if (diff === 1) label = 'Yesterday · ' + d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  else                 label = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  document.getElementById('headerDate').textContent = label;
   document.getElementById('dateNavNext').disabled = diff === 0;
 }
 
@@ -290,9 +287,6 @@ function init() {
     renderHabits();
     setTimeout(midnight, msUntilMidnight());
   }, msUntilMidnight());
-
-  document.getElementById('headerDate').textContent =
-    new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   document.getElementById('completedBadge').textContent = getData().completedTasks.length;
 
