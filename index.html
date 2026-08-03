@@ -280,15 +280,19 @@ function init() {
   maybeResetHabits(data);
   maybeResetWeeklyGoals(data);
 
-  // Auto-reset habits at midnight if tab stays open
+  // Refresh daily state at midnight if the tab stays open. On Saturdays this
+  // also rolls weekly goals into the new Saturday–Friday week.
   const msUntilMidnight = () => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate()+1) - now;
   };
   setTimeout(function midnight() {
     maybeResetHabits(getData());
+    maybeResetWeeklyGoals(getData());
     if (selectedDate !== todayStr()) { selectedDate = todayStr(); renderDateNav(); }
     renderHabits();
+    renderWeeklyGoals();
+    updateBadge();
     setTimeout(midnight, msUntilMidnight());
   }, msUntilMidnight());
 

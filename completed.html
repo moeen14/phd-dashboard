@@ -190,7 +190,7 @@ function render() {
   // Populate smart pill nav
   const fmtDay = d => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
   if (period === 'week') {
-    const wn = getISOWeek(start);
+    const wn = getWeekNumber(start);
     const yr = end.getFullYear();
     document.getElementById('navMain').textContent = `Week ${wn}`;
     document.getElementById('navSub').textContent  = `${fmtDay(start)} – ${fmtDay(end)}, ${yr}`;
@@ -308,7 +308,7 @@ function renderWeekStreak(habits) {
   const today = new Date(); today.setHours(0,0,0,0);
   const ws = getWeekStart(today); ws.setDate(ws.getDate() + offset*7);
   const days = Array.from({length:7}, (_, i) => addDays(ws, i));
-  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNames = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
 
   let html = `<div class="streak-wrap"><table class="streak-table">
     <thead><tr>
@@ -411,7 +411,7 @@ function renderYearStreak(habits) {
   const today = new Date(); today.setHours(0,0,0,0);
   const year = today.getFullYear() + offset;
 
-  // Build 53 weeks starting from first Monday ≤ Jan 1
+  // Build 53 weeks starting from the first Saturday ≤ Jan 1
   const jan1 = new Date(year, 0, 1);
   const gridStart = getWeekStart(jan1);
 

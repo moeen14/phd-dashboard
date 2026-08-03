@@ -71,11 +71,7 @@ function todayStr() {
 }
 
 function currentWeekStr() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const mon = new Date(d); mon.setDate(diff);
-  return mon.toISOString().split('T')[0];
+  return dateStr(getWeekStart(new Date()));
 }
 
 function seedData() {
@@ -129,8 +125,10 @@ function seedData() {
 // ── Date helpers ──────────────────────────────────────────────────────────
 function getWeekStart(date) {
   const d = new Date(date); d.setHours(0,0,0,0);
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  // JavaScript weekdays are Sunday=0 ... Saturday=6.
+  // Move back to the most recent Saturday so weeks run Saturday–Friday.
+  const daysSinceSaturday = (d.getDay() + 1) % 7;
+  d.setDate(d.getDate() - daysSinceSaturday);
   return d;
 }
 
@@ -212,11 +210,12 @@ async function loadFromCloud(uid) {
 }
 
 
-function getISOWeek(date) {
-  const d = new Date(date); d.setHours(0,0,0,0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const y = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil((((d - y) / 86400000) + 1) / 7);
+function getWeekNumber(date) {
+  const start = getWeekStart(date);
+  // Assign a cross-year week to the year containing its Friday end date.
+  const weekYear = addDays(start, 6).getFullYear();
+  const firstWeekStart = getWeekStart(new Date(weekYear, 0, 1));
+  return Math.round((start - firstWeekStart) / (7 * 86400000)) + 1;
 }
 
 function _showSyncStatus(state) {
@@ -255,6 +254,18 @@ function maybeResetHabits(data) {
 function maybeResetWeeklyGoals(data) {
   const week = currentWeekStr();
   if (data.weeklyGoalsWeek !== week) {
+    // Preserve goals when upgrading from the old Monday-based week anchor.
+    // If the saved anchor falls inside the current Saturday–Friday week,
+    // migrate the anchor without treating it as a real weekly rollover.
+    if (data.weeklyGoalsWeek) {
+      const savedAnchor = new Date(data.weeklyGoalsWeek + 'T12:00:00');
+      if (!Number.isNaN(savedAnchor.getTime()) && dateStr(getWeekStart(savedAnchor)) === week) {
+        data.weeklyGoalsWeek = week;
+        saveData(data);
+        return;
+      }
+    }
+
     data.weeklyGoals.filter(g => g.completed).forEach(g => {
       data.completedTasks.unshift({
         id: generateId(), text: g.text, category: 'weekly-goal',
